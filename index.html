@@ -1,0 +1,2966 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYM702 BLE Color Viewer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+        @import url('https://cdn.jsdelivr.net/npm/@qpokychuk/gilroy@1.0.2/index.min.css');
+
+        body {
+            font-family: 'Gilroy', 'Noto Sans KR', sans-serif;
+            background-color: #ffffff;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 430px;
+            background: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+        }
+
+        header {
+            background-color: #D0F0F2;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* centered horizontally */
+            justify-content: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            margin: 0 0 4px 0;
+            color: #000;
+            font-size: 33.8px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+            display: flex;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        h1 .brand-logo svg {
+            display: block;
+            width: 91px;
+            height: 32px;
+        }
+
+        h1 sup,
+        .result-title sup {
+            font-size: 0.5em;
+            font-weight: 700;
+            vertical-align: super;
+        }
+
+        .total-score-header {
+            display: none;
+            /* hidden until result */
+            text-align: center;
+            width: 100%;
+            font-size: 1.27em;
+            /* 65% of h1 */
+            font-weight: 700;
+            color: #333;
+            margin: 0;
+        }
+
+        #status {
+            display: none;
+        }
+
+        .step-section {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            justify-content: center;
+        }
+
+        .step-section.active {
+            display: flex;
+        }
+
+        .instruction-box {
+            background: white;
+            padding: 30px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 320px;
+            border: none;
+            margin-bottom: 20px;
+        }
+
+        .instruction-text {
+            font-size: 1.65em;
+            font-weight: 700;
+            margin: 0 0 15px 0;
+            color: #000;
+            word-break: keep-all;
+        }
+
+        .sub-text {
+            font-size: 1.35em;
+            color: #666;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+
+        .action-button {
+            background-color: #D0F0F2;
+            color: #000;
+            border: none;
+            padding: 17px 0;
+            border-radius: 8px;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            max-width: 196px;
+            transition: opacity 0.3s;
+        }
+
+        .action-button:hover {
+            opacity: 0.9;
+        }
+
+        .action-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #color-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        .color-box {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            text-align: center;
+            border: none;
+            cursor: pointer;
+            transition: box-shadow 0.2s, transform 0.15s;
+        }
+
+        .color-box:active {
+            transform: scale(0.97);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+        }
+
+        .color-display {
+            height: 60px;
+            width: 100%;
+            background-color: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .color-info {
+            height: 36px;
+            /* increased to 150% */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        .patch-name-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            margin: 0;
+        }
+
+        .patch-name {
+            font-weight: 700;
+            margin: 0;
+            font-size: 1em;
+            color: #333;
+        }
+
+        .patch-icon {
+            display: inline-flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .patch-icon svg {
+            width: 22px;
+            height: 28px;
+        }
+
+        .wellness-score {
+            color: #26C6DA;
+            font-weight: 700;
+            font-size: 0.82em;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        .debug-info {
+            display: none;
+        }
+
+        /* ── 상세 페이지 ── */
+        #step-detail {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        #step-detail.active {
+            display: flex;
+        }
+
+        .detail-header {
+            width: 100%;
+            background: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 22px;
+            box-sizing: border-box;
+        }
+
+        .detail-title {
+            font-size: 1.9em;
+            font-weight: 700;
+            margin: 0;
+            color: #000;
+            text-align: center;
+            flex: 1;
+        }
+
+        .detail-title-row {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .detail-nav-arrow {
+            font-size: 0.95em;
+            font-weight: 700;
+            color: #000;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+            flex-shrink: 0;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .detail-nav-arrow:active {
+            opacity: 0.6;
+        }
+
+        .detail-nav-arrow:disabled {
+            visibility: hidden;
+        }
+
+        .detail-color-bar {
+            width: 100%;
+            height: 80px;
+            background-color: #eee;
+            flex-shrink: 0;
+        }
+
+        .detail-body {
+            width: 100%;
+            padding: 20px 22px 30px;
+            box-sizing: border-box;
+            flex: 1;
+        }
+
+        .detail-score-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .detail-score-text {
+            font-size: 1.36em;
+            font-weight: 700;
+            color: #26C6DA;
+            margin: 0;
+            flex: 1;
+            text-align: left;
+        }
+
+        .detail-icon {
+            display: inline-flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .detail-icon svg {
+            width: 36px;
+            height: 46px;
+        }
+
+        .detail-summary {
+            font-size: 1.05em;
+            font-weight: 700;
+            color: #222;
+            line-height: 1.55;
+            margin: 0 0 14px 0;
+            word-break: keep-all;
+        }
+
+        .detail-description {
+            font-size: 0.95em;
+            color: #555;
+            line-height: 1.7;
+            margin: 0 0 30px 0;
+            word-break: keep-all;
+            white-space: pre-wrap;
+        }
+
+        .detail-back-bottom {
+            display: block;
+            width: 100%;
+            margin-top: 4em;
+            /* 설명글 끝나고 네 줄 정도의 여백 */
+            padding: 15px 0;
+            background-color: #D0F0F2;
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Noto Sans KR', sans-serif;
+            transition: opacity 0.2s;
+        }
+
+        .detail-back-bottom:active {
+            opacity: 0.75;
+        }
+
+        .detail-footer {
+            text-align: center;
+            font-size: 18px;
+            color: #aaa;
+            margin-top: 2em;
+            /* 뒤로가기 버튼 아래 두 줄 정도의 여백 */
+            width: 100%;
+            padding-bottom: 20px;
+        }
+
+        #restartButton {
+            margin-top: 10px;
+        }
+
+        footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 18px;
+            color: #aaa;
+            background: #fff;
+            width: 100%;
+            max-width: 430px;
+            box-sizing: border-box;
+        }
+
+        /* ════════════════════════════
+           결과 화면 대시보드 (신규)
+        ════════════════════════════ */
+        .result-dashboard {
+            background: linear-gradient(180deg, #cbf5f5 0%, #e3fafc 100%);
+            padding: 27px 22px 40px;
+            border-radius: 0 0 36px 36px;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .result-title-row {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 18px;
+        }
+
+        .result-title {
+            font-family: 'Gilroy', sans-serif;
+            font-weight: 800;
+            font-size: 33.8px;
+            /* 26px * 1.3 */
+            color: #111;
+            margin: 0;
+            letter-spacing: -0.5px;
+            display: flex;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .result-title .brand-logo svg {
+            display: block;
+            width: 91px;
+            height: 32px;
+        }
+
+        .result-dashboard-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 10px;
+        }
+
+        /* 엠블럼 */
+        .emblem-container {
+            width: 124px;
+            height: 133px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .emblem-svg-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 124px;
+            height: 133px;
+        }
+
+        /* 우측: 이름 + 날짜 + 그래프 */
+        .result-dashboard-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            padding-left: 10px;
+        }
+
+        .user-profile {
+            font-family: 'Noto Sans KR', sans-serif;
+            font-weight: 700;
+            font-size: 18px;
+            /* 15px * 1.2 */
+            color: #111;
+            cursor: pointer;
+            margin-bottom: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .result-date-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            transform: translateY(35px);
+            /* 경계가 30px 아래로 이동한 만큼 글자도 함께 이동, 간격은 5px 유지 */
+        }
+
+        .result-date-text {
+            font-family: 'Gilroy', 'Noto Sans KR', sans-serif;
+            font-size: 13px;
+            /* 시:분까지 표시되며 길어져서 축소 */
+            font-weight: 600;
+            color: #666;
+            margin-right: 8px;
+            white-space: nowrap;
+        }
+
+        .result-nav-arrow {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            background: none;
+            border: none;
+            padding: 0;
+            line-height: 1;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .result-nav-arrow:disabled {
+            cursor: not-allowed;
+        }
+
+        .result-nav-arrow+.result-nav-arrow {
+            margin-left: 20px;
+        }
+
+        /* 하늘색 대시보드와 10종 그리드 사이에 작게 들어가는 "최근결과 보기" 버튼 */
+        .recent-result-btn-row {
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            padding: 6px 22px 0;
+            box-sizing: border-box;
+        }
+
+        .recent-result-btn {
+            background: none;
+            border: 1.5px solid #aaa;
+            border-radius: 6px;
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: #444;
+            padding: 3px 10px;
+            cursor: pointer;
+            box-sizing: border-box;
+            transition: opacity 0.2s;
+        }
+
+        .recent-result-btn:active {
+            opacity: 0.6;
+        }
+
+        .trend-graph-container {
+            width: 100%;
+            height: 60px;
+            position: relative;
+            transform: translateY(30px);
+            /* 그래프 영역만 아래로 30px 이동 (하늘색 테두리, 이름, 날짜는 그대로) */
+        }
+
+        #trendGraphSvg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        /* ════════════════════════════
+           결과 10종 그리드 목록 (신규)
+        ════════════════════════════ */
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            width: 100%;
+            padding: 21.6px 22px 9px;
+            box-sizing: border-box;
+        }
+
+        .result-grid-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7.776px 0;
+            cursor: pointer;
+            border-bottom: none;
+            box-sizing: border-box;
+        }
+
+        .result-grid-item:nth-child(odd) {
+            padding-right: 10px;
+            border-right: none;
+        }
+
+        .result-grid-item:nth-child(even) {
+            padding-left: 10px;
+            padding-right: 14px;
+        }
+
+        .result-grid-item:nth-last-child(-n+2) {
+            border-bottom: none;
+        }
+
+        .result-grid-item-name {
+            font-family: 'Noto Sans KR', sans-serif;
+            font-weight: 700;
+            font-size: 16.8px;
+            /* 14px * 1.2, bold */
+            color: #222;
+            width: 76px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            letter-spacing: -0.3px;
+        }
+
+        .patch-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+        }
+
+        .patch-icon svg {
+            width: 33px;
+            /* 22px * 1.5 */
+            height: 42px;
+            /* 28px * 1.5 */
+        }
+
+        /* 스코어 박스 */
+        .home-grid-item-tag {
+            font-family: 'Gilroy', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-align: center;
+            min-width: 44px;
+            border: 1.5px solid #aaa;
+            color: #000000;
+            box-sizing: border-box;
+            background: transparent;
+            flex-shrink: 0;
+        }
+
+        .tag-optimum,
+        .tag-appropriate {
+            border: 1.5px solid #22aa22;
+            color: #000000;
+        }
+
+        .tag-detected {
+            border: 1.5px solid #e08000;
+            color: #000000;
+        }
+
+        .tag-warning {
+            border: 1.5px solid #cc0000;
+            color: #000000;
+        }
+
+        .tag-attention {
+            border: 1.5px solid #e05000;
+            color: #000000;
+        }
+
+        .result-footer {
+            font-family: 'Gilroy', sans-serif;
+            text-align: center;
+            font-size: 18px;
+            color: #bbb;
+            margin-top: 9px;
+            margin-bottom: 21.6px;
+            width: 100%;
+        }
+
+        .start-test-button {
+            background-color: #41D8E6 !important;
+            color: #FFFFFF !important;
+            border-radius: 12px !important;
+            max-width: 220px !important;
+            padding: 14.45px 0 !important;
+        }
+
+        /* ════════════════════════════
+           빈 화면(최초 실행 / 검사 이력 없음) 상태
+        ════════════════════════════ */
+        .result-grid-item-name.dim-text {
+            color: #c2c2c2;
+        }
+
+        .home-grid-item-tag.tag-empty {
+            color: #c2c2c2 !important;
+            border-color: #dcdcdc !important;
+            background: transparent !important;
+        }
+
+        /* ════════════════════════════
+           엠블럼(Total Score) 클릭 → 이동 가능 표시
+        ════════════════════════════ */
+        .emblem-container {
+            cursor: pointer;
+        }
+
+        /* ════════════════════════════
+           Total Score 리스트 화면 (신규)
+        ════════════════════════════ */
+        #step-total-list {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 20px 20px 0;
+            align-items: stretch;
+        }
+
+        .total-list-title {
+            font-family: 'Noto Sans KR', sans-serif;
+            font-weight: 700;
+            font-size: 20px;
+            color: #222;
+            text-align: center;
+            margin: 4px 0 18px;
+        }
+
+        .total-list-items {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .total-list-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 12px 4px;
+            border-bottom: 1px solid #eef2f3;
+        }
+
+        .total-list-date {
+            font-family: 'Gilroy', 'Noto Sans KR', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: #444;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .total-list-score {
+            font-family: 'Gilroy', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: #111;
+            flex: 1;
+            text-align: left;
+            padding-left: 10px;
+            white-space: nowrap;
+        }
+
+        .total-list-goto-btn {
+            background-color: #D0F0F2;
+            color: #000;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: opacity 0.2s;
+        }
+
+        .total-list-goto-btn:active {
+            opacity: 0.75;
+        }
+
+        .total-list-empty {
+            text-align: center;
+            color: #999;
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: 15px;
+            padding: 40px 0;
+        }
+
+        .total-list-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin: 18px 0 8px;
+            flex-wrap: wrap;
+        }
+
+        .total-list-page-arrow,
+        .total-list-page-num {
+            background: none;
+            border: none;
+            font-family: 'Gilroy', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: #666;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            line-height: 1;
+        }
+
+        .total-list-page-arrow:disabled {
+            color: #ddd;
+            cursor: not-allowed;
+        }
+
+        .total-list-page-num.active {
+            background-color: #D0F0F2;
+            color: #000;
+        }
+
+        #totalListBackBtn {
+            margin: 12px auto 20px;
+        }
+
+        .total-list-footer {
+            font-family: 'Gilroy', sans-serif;
+            text-align: center;
+            font-size: 18px;
+            color: #bbb;
+            margin-top: 9px;
+            margin-bottom: 21.6px;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1><span class="brand-logo"><svg width="91" height="32" viewBox="0 0 88 31" fill="none"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M63.4282 6.71419C61.1935 6.71419 59.5203 7.45467 58.4591 8.91416C57.4631 7.47613 55.9093 6.71419 53.968 6.71419C52.0267 6.71419 50.3426 7.39743 49.4227 8.64587V7.18995H44.1855V24.2103H49.4227V14.6162C49.4227 12.6237 50.3788 11.479 52.0485 11.479C53.5877 11.479 54.4678 12.4735 54.4678 14.2084V24.2067H59.705V14.6126C59.705 12.6201 60.6611 11.4754 62.3308 11.4754C63.87 11.4754 64.7501 12.4699 64.7501 14.2048V24.2031H69.9873V13.7613C69.9873 9.47578 67.4122 6.70703 63.4282 6.70703V6.71419Z"
+                            fill="black" />
+                        <path
+                            d="M36.8197 7.18994L33.6289 17.4493L29.873 7.22214L29.8622 7.18994H24.1035L30.9451 23.3875C30.1954 25.4265 29.0871 26.1491 26.7112 26.1491H26.6641V30.9783H26.7076C26.943 30.9926 27.1748 30.9998 27.403 30.9998C31.8976 30.9998 34.7263 28.7139 36.5227 23.6737L42.3827 7.25433L42.4045 7.19352H36.8197V7.18994Z"
+                            fill="black" />
+                        <path
+                            d="M83.1423 9.31482L85.3589 7.04329C85.7464 6.65338 86.0289 6.27062 86.0289 5.88786C86.0289 5.48006 85.7645 5.19746 85.3227 5.19746C84.8808 5.19746 84.515 5.53372 84.3339 5.94509L83.0771 5.16884C83.5009 4.19942 84.3882 3.74512 85.3009 3.74512C86.478 3.74512 87.5356 4.50706 87.5356 5.81989C87.5356 6.6033 87.1118 7.27223 86.507 7.86605L85.4132 8.95352H87.6298V10.388H83.1423V9.30766V9.31482Z"
+                            fill="black" />
+                        <path
+                            d="M76.9955 3.88135V5.12979L74.8477 10.399H73.2469L75.3186 5.3158H72.6602V3.88135H76.9955Z"
+                            fill="black" />
+                        <path
+                            d="M77.373 7.13663C77.373 5.12625 78.3546 3.74902 80.0604 3.74902C81.7663 3.74902 82.7478 5.12625 82.7478 7.13663C82.7478 9.14702 81.7663 10.5242 80.0604 10.5242C78.3546 10.5242 77.373 9.14702 77.373 7.13663ZM81.2375 7.13663C81.2375 5.88103 80.85 5.20137 80.0604 5.20137C79.2709 5.20137 78.8833 5.88103 78.8833 7.13663C78.8833 8.39223 79.2709 9.0719 80.0604 9.0719C80.85 9.0719 81.2375 8.39223 81.2375 7.13663Z"
+                            fill="black" />
+                        <path
+                            d="M12.4699 19.3526C8.53659 19.3526 5.34578 16.2011 5.34578 12.3163C5.34578 8.43146 8.53659 5.27994 12.4699 5.27994C15.016 5.27994 17.247 6.60351 18.5074 8.59243L23.0347 5.79864C20.829 2.31802 16.9283 0 12.4699 0C5.5812 0 0 5.51246 0 12.3163C0 19.1201 5.5812 24.629 12.4699 24.629C16.9283 24.629 20.829 22.311 23.0347 18.834L18.5074 16.0402C17.247 18.0255 15.0196 19.3526 12.4699 19.3526Z"
+                            fill="black" />
+                    </svg></span><span class="brand-text">&nbsp;Seat Wellness</span></h1>
+            <p class="total-score-header" id="totalScoreHeader">Total Score : -</p>
+            <p id="status" style="display:none;">상태: 연결 대기 중...</p>
+        </header>
+
+        <!-- Step 1: 연결 -->
+        <section id="step-connect" class="step-section">
+            <div class="instruction-box">
+                <p class="instruction-text">스마트 토일렛 연결 중...<br><br>전원 버튼을 길게 눌러<br>스마트 토일렛 전원을 켜주세요.</p>
+            </div>
+            <button id="connectButton" class="action-button">장치에 연결</button>
+        </section>
+
+        <!-- Step 2: 스트립 장착 -->
+        <section id="step-strip-install" class="step-section">
+            <div class="instruction-box">
+                <p class="instruction-text">1. 스트립 장착<br><br>소변 검사를 위해 스트립 장착 버튼을 눌러<br>스트립을 거터에 장착 시킵니다.</p>
+            </div>
+            <button id="confirmStripButton" class="action-button">확인</button>
+        </section>
+
+        <!-- Step 3: 거터 이동 -->
+        <section id="step-gutter-move" class="step-section">
+            <div class="instruction-box">
+                <p class="instruction-text">2. 전원 버튼<br><br>스마트 토일렛의 전원 버튼을 눌러 거터를<br>변기 가운데로 위치 시킵니다.</p>
+            </div>
+        </section>
+
+        <!-- Step 4: 소변 채취 및 원위치 -->
+        <section id="step-urine-test" class="step-section">
+            <div class="instruction-box">
+                <p class="instruction-text">3. 소변을 본 후 전원 버튼<br><br>거터에 소변을 본 후<br>전원 버튼을 눌러 거터를<br>원위치 시킵니다.</p>
+            </div>
+        </section>
+
+        <!-- Step 5: 분석 대기 -->
+        <section id="step-waiting" class="step-section">
+            <div class="instruction-box">
+                <p class="instruction-text">4. 검사가 끝났습니다.<br><br><span id="countdown"
+                        style="font-size: 1.5em; color: #1a73e8; font-weight: bold;">60</span>초 반응 후 검사 결과를<br>휴대폰 앱으로
+                    알려드립니다.<br><br>스마트 토일렛 근처에서 기다려 주세요.</p>
+            </div>
+        </section>
+
+        <!-- Step 6: 결과 -->
+        <section id="step-result" class="step-section active">
+            <!-- 결과 대시보드 (상단 파란 영역) -->
+            <div class="result-dashboard">
+                <div class="result-title-row">
+                    <h2 class="result-title"><span class="brand-logo"><svg width="77" height="27" viewBox="0 0 88 31"
+                                fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M63.4282 6.71419C61.1935 6.71419 59.5203 7.45467 58.4591 8.91416C57.4631 7.47613 55.9093 6.71419 53.968 6.71419C52.0267 6.71419 50.3426 7.39743 49.4227 8.64587V7.18995H44.1855V24.2103H49.4227V14.6162C49.4227 12.6237 50.3788 11.479 52.0485 11.479C53.5877 11.479 54.4678 12.4735 54.4678 14.2084V24.2067H59.705V14.6126C59.705 12.6201 60.6611 11.4754 62.3308 11.4754C63.87 11.4754 64.7501 12.4699 64.7501 14.2048V24.2031H69.9873V13.7613C69.9873 9.47578 67.4122 6.70703 63.4282 6.70703V6.71419Z"
+                                    fill="black" />
+                                <path
+                                    d="M36.8197 7.18994L33.6289 17.4493L29.873 7.22214L29.8622 7.18994H24.1035L30.9451 23.3875C30.1954 25.4265 29.0871 26.1491 26.7112 26.1491H26.6641V30.9783H26.7076C26.943 30.9926 27.1748 30.9998 27.403 30.9998C31.8976 30.9998 34.7263 28.7139 36.5227 23.6737L42.3827 7.25433L42.4045 7.19352H36.8197V7.18994Z"
+                                    fill="black" />
+                                <path
+                                    d="M83.1423 9.31482L85.3589 7.04329C85.7464 6.65338 86.0289 6.27062 86.0289 5.88786C86.0289 5.48006 85.7645 5.19746 85.3227 5.19746C84.8808 5.19746 84.515 5.53372 84.3339 5.94509L83.0771 5.16884C83.5009 4.19942 84.3882 3.74512 85.3009 3.74512C86.478 3.74512 87.5356 4.50706 87.5356 5.81989C87.5356 6.6033 87.1118 7.27223 86.507 7.86605L85.4132 8.95352H87.6298V10.388H83.1423V9.30766V9.31482Z"
+                                    fill="black" />
+                                <path
+                                    d="M76.9955 3.88135V5.12979L74.8477 10.399H73.2469L75.3186 5.3158H72.6602V3.88135H76.9955Z"
+                                    fill="black" />
+                                <path
+                                    d="M77.373 7.13663C77.373 5.12625 78.3546 3.74902 80.0604 3.74902C81.7663 3.74902 82.7478 5.12625 82.7478 7.13663C82.7478 9.14702 81.7663 10.5242 80.0604 10.5242C78.3546 10.5242 77.373 9.14702 77.373 7.13663ZM81.2375 7.13663C81.2375 5.88103 80.85 5.20137 80.0604 5.20137C79.2709 5.20137 78.8833 5.88103 78.8833 7.13663C78.8833 8.39223 79.2709 9.0719 80.0604 9.0719C80.85 9.0719 81.2375 8.39223 81.2375 7.13663Z"
+                                    fill="black" />
+                                <path
+                                    d="M12.4699 19.3526C8.53659 19.3526 5.34578 16.2011 5.34578 12.3163C5.34578 8.43146 8.53659 5.27994 12.4699 5.27994C15.016 5.27994 17.247 6.60351 18.5074 8.59243L23.0347 5.79864C20.829 2.31802 16.9283 0 12.4699 0C5.5812 0 0 5.51246 0 12.3163C0 19.1201 5.5812 24.629 12.4699 24.629C16.9283 24.629 20.829 22.311 23.0347 18.834L18.5074 16.0402C17.247 18.0255 15.0196 19.3526 12.4699 19.3526Z"
+                                    fill="black" />
+                            </svg></span><span class="brand-text">&nbsp;Seat Wellness</span></h2>
+                </div>
+                <div class="result-dashboard-main">
+                    <!-- 원형 엠블럼 -->
+                    <div class="emblem-container">
+                        <div class="emblem-svg-wrapper">
+                            <svg width="124" height="133" viewBox="0 0 124 133" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M119.546 99.8667C121.609 101.399 122.039 104.156 120.475 106.266C119.478 107.605 117.88 108.275 116.372 108.082L116.667 105.484C117.324 105.608 117.993 105.325 118.446 104.712C119.115 103.815 118.957 102.658 118.004 101.943C117.052 101.228 115.908 101.41 115.239 102.318C114.785 102.93 114.695 103.657 115.012 104.235L112.62 105.279C111.986 103.884 112.156 102.17 113.165 100.82C114.729 98.7093 117.483 98.3235 119.546 99.8667Z"
+                                    fill="black" />
+                                <path
+                                    d="M110.308 116.91L104.301 110.703L106.16 108.899L106.726 109.489C106.681 108.616 107.01 107.742 107.837 106.936C109.469 105.359 112.19 105.484 113.98 107.333C115.771 109.183 115.817 111.918 114.185 113.495C113.357 114.301 112.473 114.607 111.6 114.527L112.167 115.106L110.308 116.91ZM109.163 111.997C110.07 112.928 111.249 112.916 112.11 112.076C112.96 111.248 113.017 110.057 112.122 109.126C111.215 108.196 110.036 108.207 109.175 109.047C108.313 109.875 108.257 111.067 109.163 111.997Z"
+                                    fill="black" />
+                                <path
+                                    d="M103.938 121.778L102.215 119.395C103.19 118.907 104.165 117.659 103.156 116.275L100.866 113.109L102.963 111.588L108.03 118.59L105.933 120.11L105.037 118.862C105.434 120.019 104.811 121.143 103.938 121.778Z"
+                                    fill="black" />
+                                <path
+                                    d="M95.3235 118.975C94.7001 119.304 94.292 119.838 94.1787 120.337L91.7871 120.269C91.9798 118.828 92.8185 117.693 94.2694 116.921C96.8763 115.526 99.4266 116.411 100.639 118.68C101.852 120.95 101.149 123.582 98.7465 124.876C96.5249 126.067 93.9633 125.227 92.7279 122.924C92.5579 122.606 92.4218 122.289 92.3312 121.959L97.7377 119.066C97.001 118.43 96.1622 118.521 95.3235 118.975ZM95.4028 122.504C96.1169 123.253 96.9783 123.208 97.6584 122.845C98.5312 122.379 98.8712 121.642 98.6785 120.745L95.4028 122.504Z"
+                                    fill="black" />
+                                <path
+                                    d="M79.7949 131.457L80.543 122.584C80.781 119.679 82.0052 118.238 84.3741 117.738L84.9862 120.087C83.8187 120.394 83.3653 120.904 83.2633 122.028L88.6699 129.154L85.9042 129.88L82.7079 125.239L82.4699 130.776L79.7949 131.457Z"
+                                    fill="black" />
+                                <path
+                                    d="M78.1633 127.35C78.4126 129.914 76.5764 132.093 74.0488 132.331C71.5212 132.569 69.2996 130.788 69.0616 128.223C68.8123 125.659 70.6598 123.48 73.176 123.242C75.6923 123.004 77.9139 124.785 78.1633 127.35ZM71.6232 127.974C71.7366 129.199 72.6773 129.926 73.7995 129.812C74.9216 129.699 75.7037 128.813 75.579 127.588C75.4656 126.363 74.5249 125.636 73.4027 125.75C72.292 125.863 71.5099 126.76 71.6232 127.974Z"
+                                    fill="black" />
+                                <path
+                                    d="M58.7246 131.945L59.3367 123.321L61.921 123.503L61.8643 124.308C62.3743 123.707 63.2698 123.355 64.4032 123.435C66.1487 123.56 67.5316 124.91 67.3729 127.236L66.9988 132.535L64.4146 132.354L64.7659 127.44C64.8453 126.374 64.2105 125.818 63.3831 125.761C62.431 125.693 61.7396 126.203 61.6603 127.418L61.3202 132.127L58.7246 131.945Z"
+                                    fill="black" />
+                                <path
+                                    d="M50.79 130.504L51.4021 127.622C52.4109 128.019 53.9864 127.917 54.3491 126.238L55.1652 122.414L57.7041 122.958L55.8906 131.423L53.3516 130.879L53.669 129.369C53.1023 130.425 51.8555 130.731 50.79 130.504Z"
+                                    fill="black" />
+                                <path
+                                    d="M33.7202 119.543L36.1005 114.788L38.4241 115.945L36.1458 120.496C35.7604 121.267 35.8851 121.948 36.6219 122.323C37.3926 122.708 38.0953 122.379 38.5601 121.472L40.7363 117.103L43.0599 118.26L40.793 122.81C40.4076 123.582 40.5323 124.263 41.269 124.637C42.0398 125.023 42.7425 124.694 43.1959 123.786L45.3835 119.418L47.7071 120.575L43.842 128.314L41.5184 127.156L41.8698 126.442C41.2464 126.793 40.3736 126.85 39.3308 126.328C38.4127 125.874 37.9253 125.159 37.812 124.297C37.0639 124.694 36.1571 124.74 35.0577 124.195C33.2782 123.321 32.7454 121.472 33.7202 119.543Z"
+                                    fill="black" />
+                                <path
+                                    d="M32.7343 117.478C31.1248 119.486 28.2911 119.77 26.3076 118.181C24.3241 116.593 23.9727 113.767 25.5822 111.747C27.1917 109.739 30.0253 109.455 32.0089 111.044C33.9811 112.644 34.3438 115.469 32.7343 117.478ZM27.5997 113.381C26.829 114.346 26.999 115.515 27.8831 116.218C28.7559 116.922 29.946 116.82 30.7054 115.866C31.4648 114.902 31.3061 113.733 30.422 113.03C29.5493 112.326 28.3705 112.417 27.5997 113.381Z"
+                                    fill="black" />
+                                <path
+                                    d="M15.0519 101.171L19.1436 97.79L20.7985 99.7871L16.8767 103.021C16.208 103.577 16.0493 104.247 16.5707 104.882C17.1261 105.551 17.8968 105.54 18.6789 104.882L22.4307 101.773L24.0855 103.77L20.1751 107.027C19.5063 107.583 19.3477 108.252 19.869 108.888C20.4244 109.557 21.1952 109.546 21.9773 108.888L25.729 105.778L27.3839 107.776L20.7191 113.279L19.0643 111.282L19.6764 110.771C18.9736 110.839 18.1349 110.533 17.3981 109.648C16.752 108.865 16.582 108.014 16.8314 107.174C15.9926 107.242 15.1425 106.913 14.3605 105.971C13.1137 104.451 13.3857 102.544 15.0519 101.171Z"
+                                    fill="black" />
+                                <path
+                                    d="M14.7463 93.5693C14.4176 92.9452 13.8962 92.5254 13.3975 92.4006L13.4882 90.0063C14.9276 90.2106 16.0498 91.0616 16.8205 92.5254C18.192 95.1466 17.2739 97.6997 14.9957 98.8911C12.7174 100.083 10.0878 99.3564 8.81833 96.9281C7.65087 94.6927 8.5123 92.1283 10.8245 90.9141C11.1532 90.7439 11.4706 90.6191 11.7993 90.5283L14.6443 95.9749C15.279 95.2601 15.1883 94.4204 14.7463 93.5693ZM11.2213 93.6147C10.4618 94.3296 10.4958 95.1806 10.8585 95.8728C11.3119 96.7465 12.0487 97.1096 12.9441 96.9167L11.2213 93.6147Z"
+                                    fill="black" />
+                                <path
+                                    d="M6.65382 81.5299L11.709 79.9072L12.5024 82.3809L7.79861 83.8787C6.7785 84.2078 6.50647 85.0021 6.75583 85.7964C7.05053 86.7041 7.77594 87.158 8.9434 86.7836L13.4319 85.3425L14.2253 87.8162L6.00775 90.4487L5.21433 87.975L5.98508 87.7254C5.237 87.4757 4.5796 86.7836 4.22823 85.6943C3.6955 84.0376 4.43225 82.2447 6.65382 81.5299Z"
+                                    fill="black" />
+                                <path
+                                    d="M4.83985 76.231L7.85485 75.709C8.59159 75.5842 8.54625 74.9374 8.28556 73.8254L10.6091 73.4282C11.5159 76.7189 10.6771 77.8649 8.29689 78.2734L5.2819 78.7954L5.51993 80.1571L3.06033 80.5769L2.83364 79.215L1.2128 79.4876L0 77.0593L2.39159 76.6508L2.09689 74.892L4.55649 74.4722L4.83985 76.231Z"
+                                    fill="black" />
+                                <path
+                                    d="M3.11685 67.778C2.22142 67.7666 1.48468 67.0062 1.50735 66.1096C1.51868 65.2131 2.27809 64.4754 3.17352 64.4981C4.06895 64.5094 4.8057 65.2698 4.78303 66.1664C4.76036 67.063 4.01228 67.8007 3.11685 67.778Z"
+                                    fill="black" />
+                                <path
+                                    d="M6.29036 58.4272C3.76275 57.9393 2.18725 55.6358 2.6973 53.06C3.01467 51.4147 4.17079 50.1211 5.61028 49.6445L6.46037 52.1182C5.8143 52.2884 5.33825 52.8331 5.1909 53.582C4.97555 54.6826 5.61028 55.6585 6.78908 55.8854C7.95653 56.1124 8.90864 55.4543 9.12399 54.3536C9.27134 53.6047 9.03332 52.9125 8.50059 52.5267L10.2008 50.541C11.3796 51.5282 11.969 53.1394 11.6403 54.7961C11.1415 57.3833 8.81796 58.9151 6.29036 58.4272Z"
+                                    fill="black" />
+                                <path
+                                    d="M7.29917 39.0801L15.4034 42.1098L14.4966 44.538L13.7372 44.2544C14.1566 45.0146 14.2246 45.9564 13.8279 47.0458C13.0344 49.1677 10.5182 50.2229 8.10392 49.3265C5.68966 48.4301 4.47686 45.9791 5.27028 43.8459C5.67832 42.7565 6.34706 42.0984 7.16315 41.792L6.40374 41.5084L7.29917 39.0801ZM10.4388 43.0289C9.22604 42.575 8.16059 43.097 7.74121 44.2203C7.32183 45.3437 7.78655 46.433 8.99935 46.8869C10.2121 47.3408 11.2776 46.8188 11.697 45.6954C12.1163 44.5721 11.6516 43.4828 10.4388 43.0289Z"
+                                    fill="black" />
+                                <path
+                                    d="M11.0396 31.8521L13.6126 33.2704C12.9438 34.1215 12.5924 35.6647 14.0886 36.493L17.5003 38.3766L16.2535 40.6461L8.69336 36.4703L9.94016 34.2009L11.289 34.9385C10.4389 34.0874 10.5182 32.8052 11.0396 31.8521Z"
+                                    fill="black" />
+                                <path
+                                    d="M20.0164 30.6949C20.4358 30.1275 20.5718 29.4694 20.4811 28.9701L22.6687 28.0169C23.1107 29.4013 22.8274 30.7856 21.8526 32.1133C20.0957 34.4848 17.3981 34.7798 15.3352 33.2366C13.2723 31.7048 12.7849 29.0155 14.4058 26.8142C15.9133 24.783 18.5882 24.4426 20.6851 26.0085C20.9798 26.224 21.2292 26.4624 21.4559 26.712L17.7948 31.648C18.7242 31.9204 19.4497 31.4665 20.0164 30.6949ZM18.4295 27.5404C17.4548 27.1659 16.7067 27.5744 16.242 28.1985C15.6526 28.9928 15.6526 29.8098 16.2193 30.5247L18.4295 27.5404Z"
+                                    fill="black" />
+                                <path
+                                    d="M28.6649 12.8115L31.7932 21.129C32.8247 23.8523 32.3373 25.6792 30.4104 27.1429L28.8576 25.2934C29.787 24.5104 29.9684 23.8523 29.5943 22.8083L21.6602 18.712L23.8477 16.8738L28.7102 19.6879L26.5567 14.593L28.6649 12.8115Z"
+                                    fill="black" />
+                                <path
+                                    d="M31.8505 15.8189C30.5243 13.6062 31.2384 10.8488 33.4146 9.54393C35.5909 8.22767 38.3565 8.87445 39.694 11.0871C41.0201 13.2998 40.306 16.0572 38.1298 17.3734C35.9536 18.667 33.1879 18.0202 31.8505 15.8189ZM37.4724 12.4148C36.8377 11.3595 35.6815 11.1098 34.7181 11.6885C33.7547 12.2672 33.4373 13.4133 34.072 14.4686C34.7068 15.5239 35.8629 15.7735 36.8263 15.1948C37.7898 14.616 38.1071 13.47 37.4724 12.4148Z"
+                                    fill="black" />
+                                <path
+                                    d="M47.4919 3.28076L50.6202 11.3372L48.206 12.279L47.9113 11.5188C47.7072 12.279 47.0498 12.9825 45.9957 13.4024C44.3749 14.0378 42.5387 13.4137 41.6886 11.2351L39.7617 6.28775L42.176 5.34594L43.9555 9.94152C44.3409 10.9401 45.157 11.167 45.9277 10.8606C46.8118 10.5202 47.2199 9.75997 46.7778 8.61391L45.0663 4.21123L47.4919 3.28076Z"
+                                    fill="black" />
+                                <path
+                                    d="M55.2104 1.20361L55.8905 4.06309C54.8137 4.14252 53.4309 4.91412 53.8276 6.58215L54.7231 10.3834L52.2068 10.9858L50.2119 2.56627L52.7282 1.96487L53.0796 3.46269C53.1589 2.2599 54.1563 1.45425 55.2104 1.20361Z"
+                                    fill="black" />
+                                <path
+                                    d="M75.3291 3.74538L75.2271 9.04449L72.6428 8.9991L72.7334 3.91559C72.7448 3.05321 72.3481 2.48585 71.5207 2.47451C70.6592 2.46316 70.1605 3.05321 70.1492 4.07445L70.0585 8.94236L67.4742 8.89698L67.5649 3.81347C67.5762 2.95109 67.1795 2.38373 66.3521 2.37238C65.4907 2.36104 64.992 2.95109 64.9806 3.97233L64.8899 8.84024L62.3057 8.79485L62.4643 0.159695L65.0486 0.205083L65.0373 0.999381C65.4453 0.420678 66.2161 -0.0218591 67.3722 0.000835114C68.3923 0.0235293 69.1404 0.443373 69.6164 1.18094C70.1152 0.500108 70.9199 0.0689178 72.1441 0.091612C74.1049 0.148348 75.3744 1.58943 75.3291 3.74538Z"
+                                    fill="black" />
+                                <path
+                                    d="M77.1543 5.16416C77.7323 2.65645 80.1693 1.16998 82.6515 1.74868C85.1338 2.32739 86.664 4.72163 86.0859 7.22934C85.5078 9.73705 83.0709 11.2235 80.5886 10.6448C78.1064 10.0775 76.5762 7.68322 77.1543 5.16416ZM83.547 6.65064C83.819 5.45919 83.1616 4.46064 82.0735 4.21101C80.9854 3.96137 79.9539 4.55142 79.6819 5.75421C79.4098 6.94566 80.0672 7.94421 81.1554 8.19384C82.2435 8.44348 83.2749 7.85343 83.547 6.65064Z"
+                                    fill="black" />
+                                <path
+                                    d="M100.084 12.3129L97.8289 17.1241L95.4826 16.0234L97.6475 11.4165C98.0216 10.6336 97.8742 9.95273 97.1262 9.60097C96.3441 9.22652 95.6413 9.56693 95.2106 10.4974L93.1364 14.9114L90.7902 13.8108L92.9551 9.20382C93.3291 8.42087 93.1817 7.74005 92.4337 7.38828C91.6516 7.02518 90.9602 7.36559 90.5181 8.28471L88.4439 12.6987L86.0977 11.5981L89.77 3.76855L92.1163 4.86923L91.7763 5.58409C92.3883 5.22099 93.2611 5.14156 94.3152 5.62948C95.2333 6.06067 95.7433 6.76419 95.8794 7.62657C96.6161 7.20673 97.5229 7.13865 98.6336 7.66062C100.436 8.51165 101.003 10.3499 100.084 12.3129Z"
+                                    fill="black" />
+                                <path
+                                    d="M103.62 19.0302C104.187 19.4614 104.833 19.5975 105.332 19.5068L106.273 21.7081C104.89 22.1393 103.507 21.8443 102.204 20.8571C99.846 19.0756 99.5853 16.3863 101.138 14.3325C102.691 12.2787 105.377 11.8134 107.553 13.4588C109.571 14.9793 109.877 17.6572 108.313 19.7451C108.098 20.0401 107.86 20.2897 107.61 20.5053L102.691 16.8175C102.419 17.7366 102.861 18.4628 103.62 19.0302ZM106.783 17.4756C107.168 16.5111 106.76 15.7509 106.148 15.2856C105.366 14.6956 104.55 14.684 103.824 15.2403L106.783 17.4756Z"
+                                    fill="black" />
+                                <path
+                                    d="M116.089 26.4056L112.224 30.048L110.444 28.153L114.026 24.7716C114.808 24.034 114.706 23.2057 114.139 22.5929C113.493 21.9008 112.632 21.7986 111.747 22.6383L108.313 25.8722L106.545 24L112.836 18.0654L114.615 19.9604L114.026 20.5164C114.808 20.4143 115.703 20.766 116.485 21.5944C117.675 22.8766 117.8 24.8056 116.089 26.4056Z"
+                                    fill="black" />
+                                <path
+                                    d="M119.999 30.411L117.506 32.1811C116.894 32.6123 117.211 33.1683 117.925 34.0647L116.01 35.4264C113.765 32.8619 114.037 31.4662 116.01 30.0706L118.503 28.3004L117.71 27.1657L119.739 25.7246L120.532 26.8593L121.87 25.9062L124 27.5742L122.028 28.9699L123.06 30.4223L121.031 31.8634L119.999 30.411Z"
+                                    fill="black" />
+                                <text id="emblem-score-text" x="66" y="66.5" font-family="Gilroy, sans-serif"
+                                    font-weight="800" font-size="34" fill="black" text-anchor="middle"
+                                    dominant-baseline="central">-</text>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- 우측: 이름 + 날짜 + 그래프 -->
+                    <div class="result-dashboard-right">
+                        <div class="user-profile" id="userProfile"><span id="userProfileName">홍길동</span><svg width="7" height="12" viewBox="0 0 7 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M1.25 1.25L5.375 5.60059L1.25 9.95117" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg></div>
+                        <div class="trend-graph-container">
+                            <svg id="trendGraphSvg" width="100%" height="100%"></svg>
+                        </div>
+                        <div class="result-date-row">
+                            <span class="result-date-text" id="resultDateText">-</span>
+                            <button type="button" class="result-nav-arrow" id="resultPrevBtn"
+                                aria-label="이전 검사 결과" disabled><svg width="11" height="16" viewBox="0 0 11 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.75 1.03125L2.25 8.0625L9.75 15.0938" stroke="#C8C8C8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                            <button type="button" class="result-nav-arrow" id="resultNextBtn"
+                                aria-label="다음(최신) 검사 결과" disabled><svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.25 1.03125L8.75 8.0625L1.25 15.0938" stroke="#C8C8C8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="recent-result-btn-row">
+                <button type="button" class="recent-result-btn" id="recentResultBtn">최근결과 보기</button>
+            </div>
+
+            <!-- 10종 그리드 목록 -->
+            <div class="result-grid">
+                <!-- Row 1 -->
+                <div class="result-grid-item" id="blood">
+                    <span class="color-display" style="display: none;"></span>
+                    <span class="wellness-score" style="display: none;">Wellness Score : -</span>
+                    <span class="result-grid-item-name">잠&nbsp;&nbsp;혈</span>
+                    <span class="patch-icon"></span>
+                    <span class="home-grid-item-tag">-</span>
+                </div>
+                <div class="result-grid-item" id="wbc">
+                    <span class="color-display" style="display: none;"></span>
+                    <span class="wellness-score" style="display: none;">Wellness Score : -</span>
+                    <span class="result-grid-item-name">백 혈 구</span>
+                    <span class="patch-icon"></span>
+                    <span class="home-grid-item-tag">-</span>
+                </div>
+                <!-- Row 2 -->
+                <div class="result-grid-item" id="ph">
+                    <span class="color-display" style="display: none;"></span>
+                    <span class="wellness-score" style="display: none;">Wellness Score : -</span>
+                    <span class="result-grid-item-name">p H</span>
+                    <span class="patch-icon"></span>
+                    <span class="home-grid-item-tag">-</span>
+                </div>
+                <div class="result-grid-item" id="bilirubin">
+                    <span class="color-display" style="display: none;"></span>
+                    <span class="wellness-score" style="display: none;">Wellness Score : -</span>
+                    <span class="result-grid-item-name">빌리루빈</span>
+                    <span class="patch-icon"></span>
+                    <span class="home-grid-item-tag">-</span>
+                </div>
+                <!-- Row 3 -->
+                <div class="result-grid-item" id="protein">
+                    <span class="color-display" style="display: none;"></span>
+                    <span class="wellness-score" style="display: none;">Wellness Score : -</span>
+                    <span class="result-grid-item-name">단백질</span>
+                    <span class="patch-icon"></span>
+                    <span class="home-grid-item-tag">-</span>
+                </div>
+                <div class="result-grid-item" id="urobilinogen">
+                    <span class="color-display" style="display: none;"></span>
+                    <span class="wellness-score" style="display: none;">Wellness Score : -</span>
+                    <span class="result-grid-item-name" data-fullname="우로빌리노겐">우로빌리..</span>
+                    <span class="patch-icon"></span>
+                    <span class="home-grid-item-tag">-</span>
+                </div>
+                <!-- Row 4 -->
+                <div class="result-grid-item" id="glucose">
+                    <span class="color-display" style="display: none;"></span>
+                    <span class="wellness-score" style="display: none;">Wellness Score : -</span>
+                    <span class="result-grid-item-name">포도당</span>
+                    <span class="patch-icon"></span>
+                    <span class="home-grid-item-tag">-</span>
+                </div>
+                <div class="result-grid-item" id="nitrite">
+                    <span class="color-display" style="display: none;"></span>
+                    <span class="wellness-score" style="display: none;">Wellness Score : -</span>
+                    <span class="result-grid-item-name">아질산염</span>
+                    <span class="patch-icon"></span>
+                    <span class="home-grid-item-tag">-</span>
+                </div>
+                <!-- Row 5 -->
+                <div class="result-grid-item" id="ketone">
+                    <span class="color-display" style="display: none;"></span>
+                    <span class="wellness-score" style="display: none;">Wellness Score : -</span>
+                    <span class="result-grid-item-name">케&nbsp;&nbsp;톤</span>
+                    <span class="patch-icon"></span>
+                    <span class="home-grid-item-tag">-</span>
+                </div>
+                <div class="result-grid-item" id="sg">
+                    <span class="color-display" style="display: none;"></span>
+                    <span class="wellness-score" style="display: none;">Wellness Score : -</span>
+                    <span class="result-grid-item-name">비&nbsp;&nbsp;중</span>
+                    <span class="patch-icon"></span>
+                    <span class="home-grid-item-tag">-</span>
+                </div>
+            </div>
+
+            <button id="restartButton" class="action-button start-test-button"
+                style="margin-top: 11.02px; margin-bottom: 10.58px;">검사시작</button>
+            <div class="result-footer">Yellosis Inc. ⓒ</div>
+        </section>
+
+        <!-- Step 7: 상세 설명 -->
+        <section id="step-detail">
+            <div class="detail-header" id="detailHeader">
+                <div class="detail-title-row">
+                    <button type="button" class="detail-nav-arrow" id="detailPrevBtn" aria-label="이전 항목">◁</button>
+                    <p class="detail-title" id="detailTitle">Blood</p>
+                    <button type="button" class="detail-nav-arrow" id="detailNextBtn" aria-label="다음 항목">▷</button>
+                </div>
+            </div>
+            <div class="detail-color-bar" id="detailColorBar" style="display:none;"></div>
+            <!-- 요구사항: 첫번째 블록의 배경색(헤더)을 고정하지 않고 도출된 색으로 변경하며, 공통 Cym702 Seat 글자를 삭제하고 항목 글자(Blood 등)만 들어가게 함. 기존 색상바(color-bar)는 더이상 필요하지 않으므로 숨김 처리합니다. -->
+            <div class="detail-body">
+                <div class="detail-score-line">
+                    <p class="detail-score-text" id="detailScoreText">Wellness Score : -</p>
+                    <span class="detail-icon" id="detailIcon"></span>
+                </div>
+                <p class="detail-summary" id="detailSummary"></p>
+                <p class="detail-description" id="detailDescription"></p>
+
+                <button class="detail-back-bottom" id="detailBackBtn">뒤로가기</button>
+                <div class="detail-footer">Yellosis Inc ⓒ</div>
+            </div>
+        </section>
+
+        <!-- Step 8: Total Score 리스트 -->
+        <section id="step-total-list" class="step-section">
+            <p class="total-list-title">지난 검사 결과 (Total Score)</p>
+            <div class="total-list-items" id="totalScoreListContainer"></div>
+            <div class="total-list-pagination" id="totalScoreListPagination"></div>
+            <button type="button" class="action-button" id="totalListBackBtn">돌아가기</button>
+            <div class="total-list-footer">Yellosis Inc. ⓒ</div>
+        </section>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const connectButton = document.getElementById('connectButton');
+            const confirmStripButton = document.getElementById('confirmStripButton');
+            const restartButton = document.getElementById('restartButton');
+            const statusDisplay = document.getElementById('status');
+            const countdownDisplay = document.getElementById('countdown');
+
+            const steps = {
+                connect: document.getElementById('step-connect'),
+                stripInstall: document.getElementById('step-strip-install'),
+                gutterMove: document.getElementById('step-gutter-move'),
+                urineTest: document.getElementById('step-urine-test'),
+                waiting: document.getElementById('step-waiting'),
+                result: document.getElementById('step-result')
+            };
+            const stepDetail = document.getElementById('step-detail');
+            const stepTotalList = document.getElementById('step-total-list');
+            const totalListBackBtn = document.getElementById('totalListBackBtn');
+            const TOTAL_LIST_PAGE_SIZE = 15;
+            let totalListCurrentPage = 1;
+            let totalListSortedIndices = [];
+            const detailBackBtn = document.getElementById('detailBackBtn');
+            const detailPrevBtn = document.getElementById('detailPrevBtn');
+            const detailNextBtn = document.getElementById('detailNextBtn');
+            const DETAIL_CATEGORIES = ['blood', 'bilirubin', 'urobilinogen', 'ketone', 'protein', 'nitrite', 'glucose', 'ph', 'sg', 'wbc'];
+            let currentDetailCategory = null;
+
+            const SERVICE_UUID = "0000fff0-0000-1000-8000-00805f9b34fb";
+            const READ_UUID = "0000fff1-0000-1000-8000-00805f9b34fb";
+
+            let bleDevice;
+            let bleServer;
+            let dataCharacteristic;
+            let receivedDataBuffer = '';
+            let countdownInterval;
+            let isResultDisplayed = false; // 결과 화면 표시 여부 플래그
+
+            // 상세 페이지 열기
+            function showDetail(elementId, opts) {
+                opts = opts || {};
+                const colorBox = document.getElementById(elementId);
+                if (!colorBox) return;
+
+                currentDetailCategory = elementId;
+
+                const colorDisplay = colorBox.querySelector('.color-display');
+                // 새 레이아웃에서는 .result-grid-item-name 사용 (이전 .patch-name 대체)
+                const nameEl = colorBox.querySelector('.result-grid-item-name') || colorBox.querySelector('.patch-name');
+                const patchName = nameEl ? (nameEl.dataset.fullname || nameEl.textContent.trim()) : elementId;
+                const scoreText = colorBox.querySelector('.wellness-score').textContent;
+                const iconEl = colorBox.querySelector('.patch-icon');
+
+                // 상세 헤더 배경색을 도출된 색상으로 변경
+                const headerEl = document.getElementById('detailHeader');
+                if (headerEl && colorDisplay) {
+                    headerEl.style.backgroundColor = colorDisplay.style.backgroundColor || '#eee';
+                }
+
+                // 색상바
+                document.getElementById('detailColorBar').style.backgroundColor =
+                    colorDisplay.style.backgroundColor || '#eee';
+
+                // 제목
+                document.getElementById('detailTitle').textContent = patchName;
+
+                // Score 텍스트
+                document.getElementById('detailScoreText').textContent = scoreText;
+
+                // icon
+                document.getElementById('detailIcon').innerHTML = iconEl ? iconEl.innerHTML : '';
+
+                // description: trainingData에서 해당 항목의 score/description 있는 행 찾기
+                const scoreNum = parseFloat(scoreText.replace('Wellness Score : ', ''));
+                const entry = trainingData.find(
+                    item => item.category === elementId &&
+                        item.score === scoreNum &&
+                        item.description !== null
+                ) || trainingData.find(
+                    item => item.category === elementId && item.description !== null
+                );
+
+                let summaryText = '';
+                let bodyText = '';
+
+                if (entry && entry.description) {
+                    const raw = entry.description.replace(/\r/g, '').trim();
+                    // 첫 줄(따옴표 포함 부분)이 summary, 나머지가 body
+                    const lines = raw.split('\n');
+                    summaryText = lines[0].trim();
+                    bodyText = lines.slice(1).join('\n').trim();
+                }
+
+                document.getElementById('detailSummary').textContent = summaryText;
+                document.getElementById('detailDescription').textContent = bodyText;
+
+                // 공통 헤더와 푸터 숨기기
+                document.querySelector('header').style.display = 'none';
+                const footerEl0 = document.querySelector('footer'); if (footerEl0) footerEl0.style.display = 'none';
+
+                // 결과 화면 숨기고 상세 화면 표시
+                steps.result.classList.remove('active');
+                stepDetail.classList.add('active');
+
+                // 안드로이드 뒤로가기 지원용 history 푸시 (화살표 이동 시에는 중복 푸시하지 않음)
+                if (!opts.skipHistory) {
+                    window.history.pushState({ detail: true, elementId }, '', window.location.href);
+                }
+            }
+
+            // 상세 페이지 닫기 → 결과 화면 복귀
+            function closeDetail() {
+                stepDetail.classList.remove('active');
+                steps.result.classList.add('active');
+
+                // 결과 화면에서는 전역 헤더 숨김 유지 (대시보드가 대체)
+                document.querySelector('header').style.display = 'none';
+                const footerEl1 = document.querySelector('footer'); if (footerEl1) footerEl1.style.display = 'block';
+
+                // popstate 스택 정리
+                if (window.history.state && window.history.state.detail) {
+                    window.history.back();
+                }
+            }
+
+            detailBackBtn.addEventListener('click', closeDetail);
+
+            detailPrevBtn.addEventListener('click', () => {
+                if (!currentDetailCategory) return;
+                const idx = DETAIL_CATEGORIES.indexOf(currentDetailCategory);
+                if (idx === -1) return;
+                const prevIdx = (idx - 1 + DETAIL_CATEGORIES.length) % DETAIL_CATEGORIES.length;
+                showDetail(DETAIL_CATEGORIES[prevIdx], { skipHistory: true });
+            });
+
+            detailNextBtn.addEventListener('click', () => {
+                if (!currentDetailCategory) return;
+                const idx = DETAIL_CATEGORIES.indexOf(currentDetailCategory);
+                if (idx === -1) return;
+                const nextIdx = (idx + 1) % DETAIL_CATEGORIES.length;
+                showDetail(DETAIL_CATEGORIES[nextIdx], { skipHistory: true });
+            });
+
+            // 결과 화면의 10개 항목(이름/아이콘/점수 영역 포함) 클릭 시 상세 페이지로 이동
+            // BLE 데이터 수신 여부와 무관하게 페이지 로드 시점에 즉시 바인딩하여
+            // 항목·아이콘·점수 영역 어디를 눌러도 항상 동작하도록 보장합니다.
+            const RESULT_CATEGORIES = ['blood', 'bilirubin', 'urobilinogen', 'ketone', 'protein', 'nitrite', 'glucose', 'ph', 'sg', 'wbc'];
+            RESULT_CATEGORIES.forEach(cat => {
+                const itemEl = document.getElementById(cat);
+                if (itemEl) {
+                    itemEl.addEventListener('click', () => showDetail(cat));
+                }
+            });
+
+            // 안드로이드 하단 '<' 버튼(popstate) 연동
+            window.addEventListener('popstate', (e) => {
+                if (stepDetail.classList.contains('active')) {
+                    stepDetail.classList.remove('active');
+                    steps.result.classList.add('active');
+                    // 결과 화면에서는 전역 헤더 숨김 유지
+                    document.querySelector('header').style.display = 'none';
+                    const footerEl1 = document.querySelector('footer'); if (footerEl1) footerEl1.style.display = 'block';
+                } else if (stepTotalList.classList.contains('active')) {
+                    stepTotalList.classList.remove('active');
+                    steps.result.classList.add('active');
+                    document.querySelector('header').style.display = 'none';
+                    const footerEl2 = document.querySelector('footer'); if (footerEl2) footerEl2.style.display = 'block';
+                }
+            });
+
+            // JSONP(gviz)로 가져올 구글 시트 URL (gid=0 첫 시트)
+            const SHEET_GVIZ_URL =
+                "https://docs.google.com/spreadsheets/d/16XeZ9JP0MAjB0Tz3kmW5IOHDba_gKW1VOnjKQkpNK-M/gviz/tq?tqx=out:json&gid=0";
+
+            // 지난 검사 결과 이력이 저장되는 구글시트 (JSONP/gviz, responseHandler를 별도로 지정해
+            // trainingData 로드용 콜백과 충돌하지 않게 함)
+            const RESULT_HISTORY_GVIZ_URL =
+                "https://docs.google.com/spreadsheets/d/1LXLJ9K5VtqZuGgco3c3iV8tvqf2WxYVZ4UPKeVUb28U/gviz/tq?tqx=out:json;responseHandler:cymResultHistoryHandler&gid=0";
+
+            // 지난 검사 결과 카테고리별 시트 컬럼 접두어 (우로빌리노젠은 오탈자 헤더 대응을 위해 2개 후보 사용)
+            const RESULT_HISTORY_CAT_DEFS = [
+                { key: 'blood', prefixes: ['Blood'] },
+                { key: 'bilirubin', prefixes: ['Bilirubin'] },
+                { key: 'urobilinogen', prefixes: ['Urobilinogen', 'Uroblilinogen'] },
+                { key: 'ketone', prefixes: ['Ketone'] },
+                { key: 'protein', prefixes: ['Protein'] },
+                { key: 'nitrite', prefixes: ['Nitrite'] },
+                { key: 'glucose', prefixes: ['Glucose'] },
+                { key: 'ph', prefixes: ['pH'] },
+                { key: 'sg', prefixes: ['S.G.'] },
+                { key: 'wbc', prefixes: ['WBC'] }
+            ];
+
+            // 지난 검사 결과 이력 상태
+            let resultHistoryRecords = [];   // 시트에 저장된 순서(과거→최신) 그대로의 검사 이력 배열
+            let currentHistoryIndex = -1;    // -1: 최신(홈 화면 기본) 상태, 그 외: resultHistoryRecords의 인덱스
+            let resultHistoryLoaded = false;
+            let resultHistoryLoadPromise = null;
+
+            let trainingData = [];
+
+            // ---------------------------
+            // 0) 홈 화면(결과 화면) 최초 렌더링
+            //    지난 검사 결과가 있으면 표시, 없으면 빈 화면 표시
+            // ---------------------------
+            const LAST_RESULT_SNAPSHOT_KEY = 'cym702_last_result_snapshot';
+            const SCORE_HISTORY_STORAGE_KEY = 'cym702_score_history';
+            const EMPTY_DROP_SVG = '<svg viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C12 2 3 13.2 3 19.4C3 24.7 7.03 29 12 29C16.97 29 21 24.7 21 19.4C21 13.2 12 2 12 2Z" fill="#cfd3d6"/></svg>';
+
+            // "<" / ">" 날짜 이동 화살표 아이콘 (활성=검정, 비활성=회색)
+            const RESULT_ARROW_PREV_ACTIVE = '<svg width="11" height="16" viewBox="0 0 11 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.75 1.03125L2.25 8.0625L9.75 15.0938" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            const RESULT_ARROW_PREV_DISABLED = '<svg width="11" height="16" viewBox="0 0 11 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.75 1.03125L2.25 8.0625L9.75 15.0938" stroke="#C8C8C8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            const RESULT_ARROW_NEXT_ACTIVE = '<svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.25 1.03125L8.75 8.0625L1.25 15.0938" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            const RESULT_ARROW_NEXT_DISABLED = '<svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.25 1.03125L8.75 8.0625L1.25 15.0938" stroke="#C8C8C8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+            function getScoreHistoryFromStorage() {
+                try {
+                    const stored = localStorage.getItem(SCORE_HISTORY_STORAGE_KEY);
+                    const arr = stored ? JSON.parse(stored) : [];
+                    return Array.isArray(arr) ? arr : [];
+                } catch (e) { return []; }
+            }
+
+            // 구글시트 User_ID 열에서 불러온 이름을 화면(#userProfile)에 표시
+            // 값이 없으면 기존 기본 표기(홍길동)를 유지
+            function updateUserProfileDisplay(userId) {
+                const userProfileEl = document.getElementById('userProfile');
+                if (!userProfileEl) return;
+                const name = (userId !== undefined && userId !== null && userId !== '') ? userId : '홍길동';
+                const userProfileNameEl = document.getElementById('userProfileName');
+                if (userProfileNameEl) {
+                    userProfileNameEl.textContent = name;
+                } else {
+                    userProfileEl.textContent = name;
+                }
+            }
+
+            // resultHistoryRecords[idx](화면에 표시 중인 시점)를 오른쪽 끝으로 하여
+            // 그 이전 데이터들을 포함한 최근 5개 점수를 시간순(과거→현재)으로 반환
+            function getTrendScoresEndingAt(idx) {
+                if (!resultHistoryRecords.length) return [];
+                const endIdx = Math.min(Math.max(idx, 0), resultHistoryRecords.length - 1);
+                const startIdx = Math.max(0, endIdx - 4);
+                return resultHistoryRecords.slice(startIdx, endIdx + 1)
+                    .map(r => parseFloat(r.avgScore))
+                    .filter(v => !isNaN(v));
+            }
+
+            // 엠블럼 중앙에 실제 점수를 표시
+            function setEmblemScoreText(avgScore) {
+                const emblemText = document.getElementById('emblem-score-text');
+                if (!emblemText) return;
+                while (emblemText.firstChild) emblemText.removeChild(emblemText.firstChild);
+                emblemText.setAttribute('font-size', '34');
+                emblemText.setAttribute('y', '66.5');
+                emblemText.textContent = avgScore;
+            }
+
+            // 엠블럼 중앙에 "검사가 필요해요!" 문구를 원 안에 맞춰 2줄로 표시
+            function setEmblemEmptyText() {
+                const emblemText = document.getElementById('emblem-score-text');
+                if (!emblemText) return;
+                while (emblemText.firstChild) emblemText.removeChild(emblemText.firstChild);
+                emblemText.setAttribute('font-size', '13.5');
+                emblemText.setAttribute('y', '66.5');
+                const svgNS = 'http://www.w3.org/2000/svg';
+                const line1 = document.createElementNS(svgNS, 'tspan');
+                line1.setAttribute('x', '66');
+                line1.setAttribute('dy', '-8');
+                line1.textContent = '검사가';
+                const line2 = document.createElementNS(svgNS, 'tspan');
+                line2.setAttribute('x', '66');
+                line2.setAttribute('dy', '17');
+                line2.textContent = '필요해요!';
+                emblemText.appendChild(line1);
+                emblemText.appendChild(line2);
+            }
+
+            // 추이 그래프: 눈금선(점선)만 그리고 데이터 라인/점은 그리지 않음
+            function drawEmptyTrendGraph() {
+                const svg = document.getElementById('trendGraphSvg');
+                if (!svg) return;
+                svg.innerHTML = '';
+
+                const W = 160, H = 70;
+                svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+                svg.setAttribute('preserveAspectRatio', 'none');
+
+                const gridCount = 5;
+                const baseStep = (H - 20) / (gridCount - 1);
+                const centerY = 10 + 2 * baseStep;
+                const gridStep = baseStep * 1.5;
+                const gridOffsets = [-2, -1, 0, 1, 2];
+                for (let g = 0; g < gridCount; g++) {
+                    const gy = centerY + gridOffsets[g] * gridStep;
+                    const gridLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    gridLine.setAttribute('x1', 10);
+                    gridLine.setAttribute('x2', W - 10);
+                    gridLine.setAttribute('y1', gy);
+                    gridLine.setAttribute('y2', gy);
+                    gridLine.setAttribute('stroke', '#9BD3E0');
+                    gridLine.setAttribute('stroke-width', '1');
+                    gridLine.setAttribute('stroke-dasharray', '2,2');
+                    svg.appendChild(gridLine);
+                }
+            }
+
+            // 최초 실행 / 검사 이력 없음 → 빈 화면 렌더링
+            function renderEmptyResultState() {
+                setEmblemEmptyText();
+
+                const resultDateEl = document.getElementById('resultDateText');
+                if (resultDateEl) resultDateEl.textContent = '-';
+
+                const totalScoreEl = document.getElementById('totalScoreHeader');
+                if (totalScoreEl) totalScoreEl.textContent = 'Total Score : -';
+
+                drawEmptyTrendGraph();
+
+                RESULT_CATEGORIES.forEach(cat => {
+                    const el = document.getElementById(cat);
+                    if (!el) return;
+
+                    const nameEl = el.querySelector('.result-grid-item-name');
+                    if (nameEl) nameEl.classList.add('dim-text');
+
+                    const iconEl = el.querySelector('.patch-icon');
+                    if (iconEl) iconEl.innerHTML = EMPTY_DROP_SVG;
+
+                    const tag = el.querySelector('.home-grid-item-tag');
+                    if (tag) {
+                        tag.textContent = '없음';
+                        tag.style.cssText = '';
+                        tag.className = 'home-grid-item-tag tag-empty';
+                    }
+
+                    const wellnessScore = el.querySelector('.wellness-score');
+                    if (wellnessScore) wellnessScore.textContent = 'Wellness Score : -';
+                });
+            }
+
+            // 지난 검사 결과가 있는 경우 → 저장된 스냅샷으로 화면 복원
+            function renderSavedResultState(snapshot) {
+                setEmblemScoreText(snapshot.avgScore);
+
+                const resultDateEl = document.getElementById('resultDateText');
+                if (resultDateEl) resultDateEl.textContent = snapshot.dateText || '-';
+
+                const totalScoreEl = document.getElementById('totalScoreHeader');
+                if (totalScoreEl) totalScoreEl.textContent = `Total Score : ${snapshot.avgScore}`;
+
+                drawTrendGraph(getScoreHistoryFromStorage(), snapshot.avgScore);
+
+                RESULT_CATEGORIES.forEach(cat => {
+                    const el = document.getElementById(cat);
+                    if (!el) return;
+
+                    const catData = snapshot.categories && snapshot.categories[cat];
+                    const nameEl = el.querySelector('.result-grid-item-name');
+                    if (nameEl) nameEl.classList.remove('dim-text');
+
+                    const iconEl = el.querySelector('.patch-icon');
+                    const tag = el.querySelector('.home-grid-item-tag');
+                    const wellnessScore = el.querySelector('.wellness-score');
+                    const colorDisplay = el.querySelector('.color-display');
+
+                    if (!catData) {
+                        if (iconEl) iconEl.innerHTML = '';
+                        if (tag) { tag.textContent = '-'; tag.style.cssText = ''; tag.className = 'home-grid-item-tag'; }
+                        if (wellnessScore) wellnessScore.textContent = 'Wellness Score : -';
+                        return;
+                    }
+
+                    if (iconEl) iconEl.innerHTML = catData.icon || '';
+                    if (colorDisplay && catData.bg) colorDisplay.style.backgroundColor = catData.bg;
+                    if (wellnessScore) wellnessScore.textContent = catData.wellnessScoreText || 'Wellness Score : -';
+                    if (tag) {
+                        tag.textContent = catData.tagText || '-';
+                        tag.style.cssText = catData.tagStyleCssText || '';
+                        tag.className = catData.tagClassName || 'home-grid-item-tag';
+                    }
+                });
+            }
+
+            // 검사 완료 시점에 마지막 결과 화면 상태를 통째로 저장 (다음 실행 시 복원용)
+            function saveLastResultSnapshot(avgScore, dateText) {
+                const snapshot = { avgScore, dateText, categories: {} };
+                RESULT_CATEGORIES.forEach(cat => {
+                    const el = document.getElementById(cat);
+                    if (!el) return;
+                    const iconEl = el.querySelector('.patch-icon');
+                    const tag = el.querySelector('.home-grid-item-tag');
+                    const wellnessScore = el.querySelector('.wellness-score');
+                    const colorDisplay = el.querySelector('.color-display');
+                    snapshot.categories[cat] = {
+                        icon: iconEl ? iconEl.innerHTML : '',
+                        bg: colorDisplay ? colorDisplay.style.backgroundColor : '',
+                        wellnessScoreText: wellnessScore ? wellnessScore.textContent : '',
+                        tagText: tag ? tag.textContent : '',
+                        tagStyleCssText: tag ? tag.style.cssText : '',
+                        tagClassName: tag ? tag.className : 'home-grid-item-tag'
+                    };
+                });
+                try {
+                    localStorage.setItem(LAST_RESULT_SNAPSHOT_KEY, JSON.stringify(snapshot));
+                } catch (e) { console.error('마지막 결과 저장 실패:', e); }
+            }
+
+            // 구글시트 이력(resultHistoryRecords) 기준으로 홈 화면을 채움
+            // - 이력이 하나라도 있으면 그 중 가장 최근 결과를 항상 표시
+            // - 이력이 없으면 빈 화면 표시
+            // (localStorage 값과 무관하게 구글시트 데이터가 최종 기준이 되므로,
+            //  새로고침을 해도 검사 이력이 있으면 항상 최신 결과가 바로 보인다)
+            function renderLatestHistoryToHome() {
+                if (resultHistoryRecords.length) {
+                    currentHistoryIndex = -1;
+                    renderResultRecord(resultHistoryRecords[resultHistoryRecords.length - 1], resultHistoryRecords.length - 1);
+                } else {
+                    renderEmptyResultState();
+                }
+                setResultNavButtonsState();
+            }
+
+            // 앱 최초 진입 화면 결정: 지난 검사 결과 vs 빈 화면
+            async function initHomeScreen() {
+                // 로컬에 저장된 마지막 결과가 있으면 구글시트 로딩이 끝나기 전까지
+                // 우선 즉시 표시해 빈 화면이 잠깐이라도 깜빡이지 않게 한다.
+                let snapshot = null;
+                try {
+                    const stored = localStorage.getItem(LAST_RESULT_SNAPSHOT_KEY);
+                    if (stored) snapshot = JSON.parse(stored);
+                } catch (e) { snapshot = null; }
+
+                if (snapshot) {
+                    renderSavedResultState(snapshot);
+                } else {
+                    renderEmptyResultState();
+                }
+                showStep('result');
+                currentHistoryIndex = -1;
+
+                // 구글시트에 저장된 실제 검사 이력을 불러와, 있으면 가장 최근 결과로 홈 화면을 갱신한다.
+                // (검사 이력이 하나라도 있으면 최근 결과가 바로 홈 화면으로 뜨고,
+                //  이력이 없을 때만 빈 화면이 유지된다. 새로고침 시에도 동일하게 동작.)
+                await ensureResultHistoryLoaded();
+                renderLatestHistoryToHome();
+            }
+
+            initHomeScreen();
+
+            if (!navigator.bluetooth) {
+                statusDisplay.textContent = '오류: Web Bluetooth API를 지원하지 않는 브라우저입니다.';
+                connectButton.disabled = true;
+                return;
+            }
+
+            connectButton.addEventListener('click', handleConnectClick);
+            confirmStripButton.addEventListener('click', () => showStep('gutterMove'));
+            restartButton.addEventListener('click', goHome);
+
+            const recentResultBtn = document.getElementById('recentResultBtn');
+            if (recentResultBtn) {
+                recentResultBtn.addEventListener('click', () => {
+                    showLatestHistoryRecord();
+                });
+            }
+
+            // 홈(최종 검사 결과) 화면 날짜 옆 "<" / ">" 화살표: 지난 검사 결과 탐색
+            const resultPrevBtn = document.getElementById('resultPrevBtn');
+            const resultNextBtn = document.getElementById('resultNextBtn');
+
+            if (resultPrevBtn) {
+                resultPrevBtn.addEventListener('click', async () => {
+                    if (resultPrevBtn.disabled) return;
+                    await ensureResultHistoryLoaded();
+                    if (!resultHistoryRecords.length) return;
+                    const baseIdx = (currentHistoryIndex === -1) ? resultHistoryRecords.length - 1 : currentHistoryIndex;
+                    const idx = Math.max(0, baseIdx - 1);
+                    renderHistoryRecordAt(idx);
+                });
+            }
+
+            if (resultNextBtn) {
+                resultNextBtn.addEventListener('click', () => {
+                    if (resultNextBtn.disabled) return;
+                    if (currentHistoryIndex === -1 || !resultHistoryRecords.length) return;
+                    const idx = Math.min(resultHistoryRecords.length - 1, currentHistoryIndex + 1);
+                    renderHistoryRecordAt(idx);
+                });
+            }
+
+            function showStep(stepName) {
+                for (const key in steps) {
+                    steps[key].classList.remove('active');
+                }
+                if (steps[stepName]) {
+                    steps[stepName].classList.add('active');
+                }
+                isResultDisplayed = (stepName === 'result');
+
+                const totalScoreEl = document.getElementById('totalScoreHeader');
+                if (totalScoreEl && !isResultDisplayed) {
+                    totalScoreEl.style.display = 'none';
+                }
+
+                // 결과 화면일 때 전역 헤더 숨김 (대시보드가 헤더 역할 대체)
+                const globalHeader = document.querySelector('header');
+                if (globalHeader) {
+                    globalHeader.style.display = isResultDisplayed ? 'none' : 'flex';
+                }
+            }
+
+            // ---------------------------
+            // 1) Google Sheet → trainingData (JSONP)
+            // ---------------------------
+            async function loadTrainingData() {
+                return new Promise((resolve, reject) => {
+                    try {
+                        window.google = window.google || {};
+                        window.google.visualization = window.google.visualization || {};
+                        window.google.visualization.Query = window.google.visualization.Query || {};
+
+                        window.google.visualization.Query.setResponse = function (resp) {
+                            try {
+                                if (!resp || resp.status !== 'ok') {
+                                    console.error('Sheet 응답 오류:', resp);
+                                    alert('구글 시트 응답에 문제가 있습니다. 공유 설정을 확인해 주세요.');
+                                    reject(new Error('Sheet status not ok'));
+                                    return;
+                                }
+
+                                const rows = (resp.table && resp.table.rows) ? resp.table.rows : [];
+                                const data = [];
+
+                                rows.forEach(row => {
+                                    const c = row.c || [];
+                                    const get = (idx) =>
+                                        (c[idx] && c[idx].v != null) ? c[idx].v : 0;
+                                    const getString = (idx) =>
+                                        (c[idx] && c[idx].v != null) ? c[idx].v : null;
+
+                                    const categoryRaw = get(0);
+                                    if (categoryRaw === 0 || categoryRaw === "") return;
+
+                                    const category = String(categoryRaw).toLowerCase();
+                                    const R = Number(get(1));
+                                    const G = Number(get(2));
+                                    const B = Number(get(3));
+                                    const L = Number(get(4));
+                                    const a = Number(get(5));
+                                    const b = Number(get(6));
+                                    const expected = Number(get(7));
+                                    const value = getString(8);          // I열: 수치(value)
+                                    const score = getString(10);        // K열: score
+                                    const description = getString(11);  // L열: discription
+                                    const svgCode = getString(13);      // N열: svg
+
+                                    data.push({
+                                        category,
+                                        r: R,
+                                        g: G,
+                                        b: B,
+                                        expected,
+                                        l: L,
+                                        a: a,
+                                        b: b,
+                                        score,
+                                        value,
+                                        description,
+                                        svgCode
+                                    });
+                                });
+
+                                trainingData = data;
+                                console.log('trainingData loaded rows:', trainingData.length);
+                                resolve();
+                            } catch (e) {
+                                reject(e);
+                            }
+                        };
+
+                        const script = document.createElement('script');
+                        script.src = SHEET_GVIZ_URL;
+                        script.onerror = () => {
+                            reject(new Error('구글 시트 스크립트 로드 실패'));
+                        };
+                        document.head.appendChild(script);
+                    } catch (err) {
+                        reject(err);
+                    }
+                }).catch(err => {
+                    console.error('trainingData 로드 실패:', err);
+                    alert('trainingData를 구글 시트에서 불러오는 데 실패했습니다.\n(브라우저 콘솔에 에러 상세가 찍혀 있습니다.)');
+                });
+            }
+
+            // ---------------------------
+            // 1-2) 지난 검사 결과 이력 → 구글시트 (JSONP, gviz)
+            //      RESULT_SHEET_SCRIPT_URL(Apps Script)이 저장하는 결과 시트를
+            //      trainingData와 같은 방식(gviz JSONP)으로 읽어온다.
+            //      ※ 이 시트도 "링크가 있는 모든 사용자 - 뷰어"로 공유되어 있어야 정상 동작한다.
+            // ---------------------------
+
+            // 시트의 timestamp 셀(문자열 ISO, GViz Date(...) 형식 등)을
+            // "YYYY.MM.DD일 HH시MM분" 형식으로 변환 (표시값을 그대로 KST로 취급, 별도 시간대 변환 없음)
+            function formatSheetTimestampCell(cell) {
+                if (!cell) return null;
+                const raw = cell.v;
+                if (raw === null || raw === undefined || raw === '') return null;
+
+                let y, mo, d, h, mi;
+
+                if (typeof raw === 'string') {
+                    const gvizMatch = raw.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+))?(?:,(\d+))?/);
+                    if (gvizMatch) {
+                        y = parseInt(gvizMatch[1], 10);
+                        mo = parseInt(gvizMatch[2], 10) + 1; // GViz month는 0부터 시작
+                        d = parseInt(gvizMatch[3], 10);
+                        h = gvizMatch[4] !== undefined ? parseInt(gvizMatch[4], 10) : 0;
+                        mi = gvizMatch[5] !== undefined ? parseInt(gvizMatch[5], 10) : 0;
+                    } else {
+                        const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+                        if (isoMatch) {
+                            y = parseInt(isoMatch[1], 10);
+                            mo = parseInt(isoMatch[2], 10);
+                            d = parseInt(isoMatch[3], 10);
+                            h = parseInt(isoMatch[4], 10);
+                            mi = parseInt(isoMatch[5], 10);
+                        }
+                    }
+                }
+
+                if (y === undefined) {
+                    // 파싱 실패 시 시트가 제공하는 표시 형식(cell.f)이라도 사용
+                    return cell.f || null;
+                }
+
+                const pad = (n) => String(n).padStart(2, '0');
+                return `${y}.${pad(mo)}.${pad(d)}일 ${pad(h)}시${pad(mi)}분`;
+            }
+
+            // 지난 검사 결과 이력을 구글시트에서 JSONP로 읽어와 배열로 반환 (과거→최신 순서)
+            function loadResultHistoryFromSheet() {
+                return new Promise((resolve) => {
+                    try {
+                        window.cymResultHistoryHandler = function (resp) {
+                            try {
+                                if (!resp || resp.status !== 'ok') {
+                                    console.error('결과 이력 시트 응답 오류:', resp);
+                                    resolve([]);
+                                    return;
+                                }
+
+                                const cols = (resp.table && resp.table.cols) ? resp.table.cols : [];
+                                const rows = (resp.table && resp.table.rows) ? resp.table.rows : [];
+
+                                // 헤더 라벨 → 열 인덱스 매핑 (컬럼 순서에 의존하지 않도록)
+                                const colIndex = {};
+                                cols.forEach((col, idx) => {
+                                    const label = (col.label || col.id || '').trim();
+                                    if (label && !(label in colIndex)) colIndex[label] = idx;
+                                });
+
+                                const getCell = (row, label) => {
+                                    const idx = colIndex[label];
+                                    if (idx === undefined) return null;
+                                    return (row.c && row.c[idx]) ? row.c[idx] : null;
+                                };
+                                const getVal = (row, label) => {
+                                    const cell = getCell(row, label);
+                                    return (cell && cell.v !== undefined && cell.v !== null) ? cell.v : '';
+                                };
+                                const getValMulti = (row, labels) => {
+                                    for (const label of labels) {
+                                        const v = getVal(row, label);
+                                        if (v !== '') return v;
+                                    }
+                                    return '';
+                                };
+
+                                const records = [];
+                                rows.forEach(row => {
+                                    if (!row || !row.c) return;
+                                    const timestampCell = getCell(row, 'timestamp');
+                                    const dateText = formatSheetTimestampCell(timestampCell);
+                                    if (!dateText) return; // timestamp 없는 빈 행은 건너뜀
+
+                                    const totalScoreRaw = getVal(row, 'total_score');
+                                    const totalScoreNum = parseFloat(totalScoreRaw);
+                                    const avgScore = (totalScoreRaw !== '' && !isNaN(totalScoreNum)) ? totalScoreNum.toFixed(1) : '-';
+
+                                    const userId = getVal(row, 'User_ID');
+
+                                    const categories = {};
+                                    RESULT_HISTORY_CAT_DEFS.forEach(({ key, prefixes }) => {
+                                        categories[key] = {
+                                            value: getValMulti(row, prefixes.map(p => `${p}_value`)),
+                                            score: getValMulti(row, prefixes.map(p => `${p}_score`)),
+                                            r: getValMulti(row, prefixes.map(p => `${p}_R`)),
+                                            g: getValMulti(row, prefixes.map(p => `${p}_G`)),
+                                            b: getValMulti(row, prefixes.map(p => `${p}_B`))
+                                        };
+                                    });
+
+                                    records.push({ dateText, avgScore, userId, categories });
+                                });
+
+                                resolve(records);
+                            } catch (e) {
+                                console.error('결과 이력 파싱 실패:', e);
+                                resolve([]);
+                            }
+                        };
+
+                        const script = document.createElement('script');
+                        script.src = RESULT_HISTORY_GVIZ_URL;
+                        script.onerror = () => {
+                            console.error('결과 이력 시트 로드 실패');
+                            resolve([]);
+                        };
+                        document.head.appendChild(script);
+                    } catch (err) {
+                        console.error('결과 이력 로드 중 에러:', err);
+                        resolve([]);
+                    }
+                });
+            }
+
+            // 최초 1회만 구글시트에서 이력을 읽어오고, 이후에는 캐시된 배열을 재사용
+            function ensureResultHistoryLoaded() {
+                if (resultHistoryLoaded) return Promise.resolve(resultHistoryRecords);
+                if (!resultHistoryLoadPromise) {
+                    resultHistoryLoadPromise = loadResultHistoryFromSheet().then(records => {
+                        resultHistoryRecords = records;
+                        resultHistoryLoaded = true;
+                        setResultNavButtonsState();
+                        return records;
+                    });
+                }
+                return resultHistoryLoadPromise;
+            }
+
+            // score(또는 r,g,b)로부터 trainingData에서 알맞은 아이콘(svg)을 찾아 반환
+            function resolvePatchIconForHistory(cat, score, r, g, b) {
+                if (!trainingData || !trainingData.length) return '';
+
+                const scoreNum = parseFloat(score);
+                if (!isNaN(scoreNum)) {
+                    const byScore = trainingData.find(item =>
+                        item.category === cat && item.svgCode && parseFloat(item.score) === scoreNum);
+                    if (byScore) return byScore.svgCode;
+                }
+
+                if (r !== '' && g !== '' && b !== '' && r !== undefined && g !== undefined && b !== undefined) {
+                    const lab = rgbToLab(parseInt(r), parseInt(g), parseInt(b));
+                    const predictedLevel = predictLevelWithKNN(cat, lab, 3);
+                    if (predictedLevel !== null) {
+                        const byLevel = trainingData.find(item =>
+                            item.category === cat && item.svgCode && item.expected === predictedLevel);
+                        if (byLevel) return byLevel.svgCode;
+                    }
+                }
+                return '';
+            }
+
+            // 지난 검사 결과 1건(record)을 결과 화면(엠블럼/날짜/Total Score/10종 그리드)에 그대로 반영
+            function renderResultRecord(rec, idx) {
+                if (!rec) return;
+
+                setEmblemScoreText(rec.avgScore);
+                updateUserProfileDisplay(rec.userId);
+
+                const resultDateEl = document.getElementById('resultDateText');
+                if (resultDateEl) resultDateEl.textContent = rec.dateText || '-';
+
+                const totalScoreEl = document.getElementById('totalScoreHeader');
+                if (totalScoreEl) totalScoreEl.textContent = `Total Score : ${rec.avgScore}`;
+
+                // 추이 그래프: 제일 오른쪽 점 = 현재 화면(rec)의 Total Score,
+                // 그 왼쪽으로 직전 검사들의 Total Score가 시간순으로 이어짐
+                if (typeof idx === 'number' && idx >= 0) {
+                    drawTrendGraph(getTrendScoresEndingAt(idx), rec.avgScore);
+                }
+
+                RESULT_CATEGORIES.forEach(cat => {
+                    const el = document.getElementById(cat);
+                    if (!el) return;
+
+                    const catData = rec.categories && rec.categories[cat];
+                    const nameEl = el.querySelector('.result-grid-item-name');
+                    const iconEl = el.querySelector('.patch-icon');
+                    const tag = el.querySelector('.home-grid-item-tag');
+                    const wellnessScore = el.querySelector('.wellness-score');
+
+                    const hasScore = catData && catData.score !== '' && catData.score !== null && catData.score !== undefined;
+
+                    if (!hasScore) {
+                        if (nameEl) nameEl.classList.add('dim-text');
+                        if (iconEl) iconEl.innerHTML = '';
+                        if (tag) { tag.textContent = '-'; tag.style.cssText = ''; tag.className = 'home-grid-item-tag'; }
+                        if (wellnessScore) wellnessScore.textContent = 'Wellness Score : -';
+                        return;
+                    }
+
+                    if (nameEl) nameEl.classList.remove('dim-text');
+                    if (wellnessScore) wellnessScore.textContent = `Wellness Score : ${catData.score}`;
+
+                    if (iconEl) {
+                        iconEl.innerHTML = resolvePatchIconForHistory(cat, catData.score, catData.r, catData.g, catData.b) || '';
+                    }
+
+                    if (tag) {
+                        tag.textContent = catData.score;
+                        if (catData.r !== '' && catData.g !== '' && catData.b !== '') {
+                            const color = `rgb(${catData.r}, ${catData.g}, ${catData.b})`;
+                            tag.style.backgroundColor = color;
+                            tag.style.borderColor = color;
+                            tag.style.color = '#000000';
+                        } else {
+                            tag.style.cssText = '';
+                        }
+                        tag.className = 'home-grid-item-tag';
+                    }
+                });
+            }
+
+            // "<" / ">" 버튼 활성/비활성 상태 갱신
+            // - 이력이 없으면 둘 다 비활성화
+            // - 최신(홈 기본) 상태에서는 "<"만 활성화(더 지난 기록이 있을 때), ">"는 항상 비활성화
+            // - 가장 오래된 기록에서는 "<" 비활성화, 가장 최신 기록에서는 ">" 비활성화
+            function setResultNavButtonsState() {
+                const resultPrevBtn = document.getElementById('resultPrevBtn');
+                const resultNextBtn = document.getElementById('resultNextBtn');
+                if (!resultPrevBtn || !resultNextBtn) return;
+
+                if (!resultHistoryLoaded || !resultHistoryRecords.length) {
+                    resultPrevBtn.disabled = true;
+                    resultNextBtn.disabled = true;
+                    resultPrevBtn.innerHTML = RESULT_ARROW_PREV_DISABLED;
+                    resultNextBtn.innerHTML = RESULT_ARROW_NEXT_DISABLED;
+                    return;
+                }
+
+                const idx = (currentHistoryIndex === -1) ? resultHistoryRecords.length - 1 : currentHistoryIndex;
+                resultPrevBtn.disabled = idx <= 0;
+                resultNextBtn.disabled = idx >= resultHistoryRecords.length - 1;
+                resultPrevBtn.innerHTML = resultPrevBtn.disabled ? RESULT_ARROW_PREV_DISABLED : RESULT_ARROW_PREV_ACTIVE;
+                resultNextBtn.innerHTML = resultNextBtn.disabled ? RESULT_ARROW_NEXT_DISABLED : RESULT_ARROW_NEXT_ACTIVE;
+            }
+
+            // resultHistoryRecords[idx]를 화면에 표시하고 네비게이션 상태를 갱신
+            function renderHistoryRecordAt(idx) {
+                const rec = resultHistoryRecords[idx];
+                if (!rec) return;
+                renderResultRecord(rec, idx);
+                currentHistoryIndex = idx;
+                setResultNavButtonsState();
+            }
+
+            // 구글시트 이력 중 가장 최근(마지막) 검사 결과를 화면에 표시
+            // ("최근결과 보기" 버튼, Total Score 리스트의 "돌아가기" 버튼에서 사용)
+            async function showLatestHistoryRecord() {
+                await ensureResultHistoryLoaded();
+                if (resultHistoryRecords.length) {
+                    renderHistoryRecordAt(resultHistoryRecords.length - 1);
+                }
+            }
+
+            // ---------------------------
+            // 1-3) Total Score 리스트 화면
+            // ---------------------------
+
+            // "YYYY.MM.DD일 HH시MM분" → "YYYY.MM.DD.HH.MM" 형식으로 변환
+            function formatDateForTotalList(dateText) {
+                if (!dateText) return '-';
+                const m = dateText.match(/^(\d{4})\.(\d{2})\.(\d{2})일\s*(\d{2})시(\d{2})분/);
+                if (!m) return dateText;
+                return `${m[1]}.${m[2]}.${m[3]}.${m[4]}.${m[5]}`;
+            }
+
+            // resultHistoryRecords의 인덱스를 total_score 내림차순으로 정렬한 배열 반환
+            // dateText("YYYY.MM.DD일 HH시MM분")를 비교 가능한 정렬용 숫자값으로 변환
+            function dateTextToSortValue(dateText) {
+                if (!dateText) return -Infinity;
+                const m = dateText.match(/^(\d{4})\.(\d{2})\.(\d{2})일\s*(\d{2})시(\d{2})분/);
+                if (!m) return -Infinity;
+                // YYYYMMDDHHMM 형태의 숫자로 만들어 단순 비교로도 최신순 정렬이 되게 함
+                return Number(`${m[1]}${m[2]}${m[3]}${m[4]}${m[5]}`);
+            }
+
+            // resultHistoryRecords의 인덱스를 검사일자/시간 내림차순(최신순)으로 정렬한 배열 반환
+            function buildTotalListSortedIndices() {
+                const idxArr = resultHistoryRecords.map((r, i) => i);
+                idxArr.sort((a, b) => {
+                    const da = dateTextToSortValue(resultHistoryRecords[a].dateText);
+                    const db = dateTextToSortValue(resultHistoryRecords[b].dateText);
+                    return db - da;
+                });
+                return idxArr;
+            }
+
+            // 페이지네이션(◁ 1 2 3 ▷) 렌더링
+            function renderTotalListPagination(totalPages, page) {
+                const paginationEl = document.getElementById('totalScoreListPagination');
+                if (!paginationEl) return;
+                paginationEl.innerHTML = '';
+                if (totalPages <= 1) return;
+
+                const prevArrow = document.createElement('button');
+                prevArrow.type = 'button';
+                prevArrow.className = 'total-list-page-arrow';
+                prevArrow.textContent = '◁';
+                prevArrow.disabled = page <= 1;
+                prevArrow.addEventListener('click', () => renderTotalScoreListPage(page - 1));
+                paginationEl.appendChild(prevArrow);
+
+                for (let p = 1; p <= totalPages; p++) {
+                    const pageBtn = document.createElement('button');
+                    pageBtn.type = 'button';
+                    pageBtn.className = 'total-list-page-num' + (p === page ? ' active' : '');
+                    pageBtn.textContent = String(p);
+                    pageBtn.addEventListener('click', () => renderTotalScoreListPage(p));
+                    paginationEl.appendChild(pageBtn);
+                }
+
+                const nextArrow = document.createElement('button');
+                nextArrow.type = 'button';
+                nextArrow.className = 'total-list-page-arrow';
+                nextArrow.textContent = '▷';
+                nextArrow.disabled = page >= totalPages;
+                nextArrow.addEventListener('click', () => renderTotalScoreListPage(page + 1));
+                paginationEl.appendChild(nextArrow);
+            }
+
+            // Total Score 리스트의 특정 페이지를 그림 (15개씩, total_score 내림차순)
+            function renderTotalScoreListPage(page) {
+                const listEl = document.getElementById('totalScoreListContainer');
+                if (!listEl) return;
+                listEl.innerHTML = '';
+
+                if (!totalListSortedIndices.length) {
+                    listEl.innerHTML = '<p class="total-list-empty">지난 검사 결과가 없습니다.</p>';
+                    const paginationEl = document.getElementById('totalScoreListPagination');
+                    if (paginationEl) paginationEl.innerHTML = '';
+                    return;
+                }
+
+                const totalPages = Math.max(1, Math.ceil(totalListSortedIndices.length / TOTAL_LIST_PAGE_SIZE));
+                page = Math.min(Math.max(1, page), totalPages);
+                totalListCurrentPage = page;
+
+                const startIdx = (page - 1) * TOTAL_LIST_PAGE_SIZE;
+                const pageIndices = totalListSortedIndices.slice(startIdx, startIdx + TOTAL_LIST_PAGE_SIZE);
+
+                pageIndices.forEach(recIdx => {
+                    const rec = resultHistoryRecords[recIdx];
+
+                    const row = document.createElement('div');
+                    row.className = 'total-list-row';
+
+                    const dateSpan = document.createElement('span');
+                    dateSpan.className = 'total-list-date';
+                    dateSpan.textContent = formatDateForTotalList(rec.dateText);
+
+                    const scoreSpan = document.createElement('span');
+                    scoreSpan.className = 'total-list-score';
+                    scoreSpan.textContent = `Total Score : ${rec.avgScore}`;
+
+                    const gotoBtn = document.createElement('button');
+                    gotoBtn.type = 'button';
+                    gotoBtn.className = 'total-list-goto-btn';
+                    gotoBtn.textContent = '바로가기';
+                    gotoBtn.addEventListener('click', () => {
+                        renderHistoryRecordAt(recIdx);
+                        closeTotalScoreListPanel();
+                    });
+
+                    row.appendChild(dateSpan);
+                    row.appendChild(scoreSpan);
+                    row.appendChild(gotoBtn);
+                    listEl.appendChild(row);
+                });
+
+                renderTotalListPagination(totalPages, page);
+            }
+
+            // 엠블럼(Total Score) 클릭 → 리스트 화면 열기
+            async function showTotalScoreList() {
+                await ensureResultHistoryLoaded();
+                totalListSortedIndices = buildTotalListSortedIndices();
+                renderTotalScoreListPage(1);
+
+                steps.result.classList.remove('active');
+                stepTotalList.classList.add('active');
+
+                // 리스트 화면은 다른 화면과 동일한 상단 헤더(Cym702 Seat Wellness)를 그대로 사용
+                document.querySelector('header').style.display = 'flex';
+                const totalScoreEl = document.getElementById('totalScoreHeader');
+                if (totalScoreEl) totalScoreEl.style.display = 'none';
+                const footerEl = document.querySelector('footer'); if (footerEl) footerEl.style.display = 'none';
+
+                window.history.pushState({ totalList: true }, '', window.location.href);
+            }
+
+            // 리스트 화면 패널만 닫음(어떤 결과를 보여줄지는 호출부에서 이미 결정된 상태 유지)
+            function closeTotalScoreListPanel() {
+                stepTotalList.classList.remove('active');
+                steps.result.classList.add('active');
+                document.querySelector('header').style.display = 'none';
+                const footerEl = document.querySelector('footer'); if (footerEl) footerEl.style.display = 'block';
+
+                if (window.history.state && window.history.state.totalList) {
+                    window.history.back();
+                }
+            }
+
+            // "돌아가기" 버튼 전용: 리스트를 닫고 가장 최근 검사 결과 화면으로 이동
+            function hideTotalScoreList() {
+                closeTotalScoreListPanel();
+                showLatestHistoryRecord();
+            }
+
+            const emblemContainerEl = document.querySelector('.emblem-container');
+            if (emblemContainerEl) {
+                emblemContainerEl.addEventListener('click', showTotalScoreList);
+            }
+
+            if (totalListBackBtn) {
+                totalListBackBtn.addEventListener('click', hideTotalScoreList);
+            }
+
+            // ---------------------------
+            // 2) BLE 자동 연결 시도 + 초기화
+            // ---------------------------
+
+            let isConnecting = false;
+
+            // 프로미스 타임아웃 헬퍼 함수
+            function withTimeout(promise, ms, deviceForCleanup) {
+                let timeoutId;
+                const timeoutPromise = new Promise((_, reject) => {
+                    timeoutId = setTimeout(() => {
+                        console.warn(`BLE 작업 타임아웃 발생 (${ms}ms)`);
+                        if (deviceForCleanup && deviceForCleanup.gatt) {
+                            try {
+                                console.log("타임아웃으로 인한 강제 연결 해제 시도");
+                                deviceForCleanup.gatt.disconnect();
+                            } catch (e) {
+                                console.error("타임아웃 중 디스커넥트 실패:", e);
+                            }
+                        }
+                        reject(new Error("연결 시간 초과 (Timeout)"));
+                    }, ms);
+                });
+                return Promise.race([promise, timeoutPromise]).then((res) => {
+                    clearTimeout(timeoutId);
+                    return res;
+                }, (err) => {
+                    clearTimeout(timeoutId);
+                    throw err;
+                });
+            }
+
+            await loadTrainingData();   // 시트 먼저 로딩 (홈 화면 상세 설명 조회용, 자동 연결은 하지 않음)
+
+            // trainingData가 늦게 로드되어 홈 화면의 10종 아이콘이 비어있던 경우를 보정:
+            // 이미 최근 검사 이력이 표시 중이면 아이콘 매칭을 다시 반영한다.
+            if (resultHistoryLoaded && currentHistoryIndex === -1 && resultHistoryRecords.length) {
+                renderLatestHistoryToHome();
+            }
+
+            // [진단용] getDevices() 지원 여부 및 반환된 기기 목록을 콘솔 + 화면에 잠깐 표시.
+            // 문제 원인이 (a) API 자체를 지원 안 함 (b) 권한은 저장됐는데 목록이 비어있음
+            // (c) 목록엔 있는데 이름이 'Cym702_Seat'와 정확히 일치하지 않음 중 무엇인지 구분하기 위함.
+            async function logPermittedDevices(context) {
+                if (!navigator.bluetooth.getDevices) {
+                    console.warn(`[BLE 진단/${context}] navigator.bluetooth.getDevices() 미지원 브라우저입니다.`);
+                    statusDisplay.textContent = '[진단] getDevices 미지원 브라우저';
+                    return null;
+                }
+                try {
+                    const devices = await navigator.bluetooth.getDevices();
+                    console.log(`[BLE 진단/${context}] 저장된 기기 ${devices.length}개:`,
+                        devices.map(d => ({ name: d.name, id: d.id })));
+                    statusDisplay.textContent = `[진단] 저장된 기기 ${devices.length}개` +
+                        (devices.length ? ` (${devices.map(d => d.name || '(이름없음)').join(', ')})` : '');
+                    return devices;
+                } catch (e) {
+                    console.error(`[BLE 진단/${context}] getDevices() 호출 실패:`, e);
+                    statusDisplay.textContent = `[진단] getDevices 오류: ${e.message}`;
+                    return null;
+                }
+            }
+
+            async function tryAutoConnect() {
+                try {
+                    if (!navigator.bluetooth.getDevices) {
+                        return;
+                    }
+
+                    const devices = await logPermittedDevices('자동연결');
+                    if (!devices) return;
+                    const device = devices.find(d => d.name === 'Cym702_Seat');
+
+                    if (device) {
+                        console.log('기존 장치 발견:', device.name);
+                        statusDisplay.textContent = `기존 장치 '${device.name}'에 자동 연결 시도 중...`;
+                        // 자동 연결 시도는 3초의 짧은 타임아웃을 적용해 무한정 먹통이 되는 문제를 방지합니다.
+                        await connectToDevice(device, 3000);
+                    }
+                } catch (error) {
+                    console.log('자동 연결 실패 또는 시간 초과:', error);
+                    statusDisplay.textContent = '연결 대기 중...';
+                }
+            }
+
+            async function handleConnectClick() {
+                if (isConnecting) {
+                    console.log('이미 연결 작업이 진행 중입니다. 이전 연결 시도를 해제하고 재실행합니다.');
+                    if (bleDevice && bleDevice.gatt) {
+                        try { bleDevice.gatt.disconnect(); } catch (e) { }
+                    }
+                    isConnecting = false;
+                }
+
+                try {
+                    isConnecting = true;
+                    statusDisplay.textContent = '장치를 검색 중입니다...';
+
+                    let device;
+                    if (navigator.bluetooth.getDevices) {
+                        const devices = await logPermittedDevices('수동연결버튼');
+                        device = devices ? devices.find(d => d.name === 'Cym702_Seat') : undefined;
+                    }
+
+                    if (device) {
+                        console.log('기존 장치 재연결 시도');
+                        try {
+                            // 기존 장치 연결 시도 (5초 타임아웃 적용)
+                            await connectToDevice(device, 5000);
+                        } catch (err) {
+                            console.log('기존 장치 연결 실패 또는 시간 초과, 새 장치 검색 시작:', err);
+                            statusDisplay.textContent = '기존 장치 연결 실패. 새 장치를 검색합니다...';
+
+                            // 기존 장치 연결에 실패하면, 브라우저 기본 검색 대화상자를 띄웁니다.
+                            device = await navigator.bluetooth.requestDevice({
+                                filters: [{ services: [SERVICE_UUID] }],
+                                optionalServices: [SERVICE_UUID]
+                            });
+                            await connectToDevice(device, 10000); // 수동 선택 시 10초 타임아웃
+                        }
+                    } else {
+                        device = await navigator.bluetooth.requestDevice({
+                            filters: [{ services: [SERVICE_UUID] }],
+                            optionalServices: [SERVICE_UUID]
+                        });
+                        await connectToDevice(device, 10000);
+                    }
+                } catch (error) {
+                    statusDisplay.textContent = `오류: ${error.message}`;
+                    console.error(error);
+                } finally {
+                    isConnecting = false;
+                }
+            }
+
+            async function connectToDevice(device, timeoutMs = 8000) {
+                try {
+                    isConnecting = true;
+                    bleDevice = device;
+                    statusDisplay.textContent = `장치 '${bleDevice.name}'에 연결 중...`;
+
+                    // 기존 리스너가 있다면 안전하게 먼저 삭제 후 새로 등록
+                    bleDevice.removeEventListener('gattserverdisconnected', onDisconnected);
+                    bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+                    console.log('gatt.connect() 시도');
+                    if (bleDevice.gatt.connected) {
+                        bleServer = bleDevice.gatt;
+                    } else {
+                        bleServer = await withTimeout(bleDevice.gatt.connect(), timeoutMs, bleDevice);
+                    }
+
+                    console.log('getPrimaryService() 시도');
+                    const service = await withTimeout(bleServer.getPrimaryService(SERVICE_UUID), timeoutMs, bleDevice);
+
+                    console.log('getCharacteristic() 시도');
+                    dataCharacteristic = await withTimeout(service.getCharacteristic(READ_UUID), timeoutMs, bleDevice);
+
+                    console.log('startNotifications() 시도');
+                    await withTimeout(dataCharacteristic.startNotifications(), timeoutMs, bleDevice);
+
+                    dataCharacteristic.removeEventListener('characteristicvaluechanged', handleNotifications);
+                    dataCharacteristic.addEventListener('characteristicvaluechanged', handleNotifications);
+
+                    statusDisplay.textContent = `'${bleDevice.name}' 연결됨`;
+                    showStep('stripInstall');
+                } catch (error) {
+                    console.error('connectToDevice 실패:', error);
+                    // 실패 시 gatt 연결을 확실히 해제하여 브라우저 블루투스 스택 상태 초기화
+                    if (device && device.gatt) {
+                        try { device.gatt.disconnect(); } catch (e) { }
+                    }
+                    throw error;
+                } finally {
+                    isConnecting = false;
+                }
+            }
+
+            function disconnect() {
+                if (bleDevice && bleDevice.gatt.connected) {
+                    bleDevice.gatt.disconnect();
+                }
+            }
+
+            function onDisconnected() {
+                statusDisplay.textContent = '장치 연결이 끊어졌습니다.';
+                // 결과 화면이 표시된 상태에서는 자동으로 홈으로 돌아가지 않음
+                if (!isResultDisplayed) {
+                    showStep('connect');
+                }
+            }
+
+            // ---------------------------
+            // 3) BLE 데이터 수신 & 상태 처리
+            // ---------------------------
+
+            function handleNotifications(event) {
+                const value = event.target.value;
+                const decoder = new TextDecoder('utf-8');
+                const chunk = decoder.decode(value);
+
+                receivedDataBuffer += chunk;
+
+                if (receivedDataBuffer.includes('\r\n')) {
+                    const messages = receivedDataBuffer.split('\r\n');
+                    receivedDataBuffer = messages.pop();
+
+                    for (const msg of messages) {
+                        if (msg.trim()) {
+                            console.log('수신 메시지:', msg);
+                            processMessage(msg.trim());
+                        }
+                    }
+                }
+            }
+
+            function processMessage(message) {
+                if (message.startsWith('STATUS:')) {
+                    const status = message.split(':')[1];
+                    handleStatusUpdate(status);
+                } else if (message.includes(':{')) {
+                    showStep('result');
+                    parseAndDisplayData(message);
+                }
+            }
+
+            function handleStatusUpdate(status) {
+                console.log('상태 업데이트:', status);
+                switch (status) {
+                    case 'GUTTER_CENTER':
+                        showStep('urineTest');
+                        break;
+                    case 'GUTTER_HOME':
+                        showStep('waiting');
+                        startCountdown(60);
+                        break;
+                    default:
+                        console.log('알 수 없는 상태:', status);
+                }
+            }
+
+            function startCountdown(seconds) {
+                let remaining = seconds;
+                countdownDisplay.textContent = remaining;
+
+                if (countdownInterval) clearInterval(countdownInterval);
+
+                countdownInterval = setInterval(() => {
+                    remaining--;
+                    countdownDisplay.textContent = remaining;
+                    if (remaining <= 0) {
+                        clearInterval(countdownInterval);
+                        countdownDisplay.textContent = "분석 중...";
+                    }
+                }, 1000);
+            }
+
+            function goHome() {
+                disconnect();
+                // 검사시작 버튼: 결과(홈) 화면에서 연결 단계로 이동 후 자동 연결 시도
+                showStep('connect');
+                tryAutoConnect();
+            }
+
+            // ---------------------------
+            // 4) 색 변환, KNN, 결과 표시
+            // ---------------------------
+
+            function getColorDistance(lab1, lab2) {
+                const lDiff = lab1.l - lab2.l;
+                const aDiff = lab1.a - lab2.a;
+                const bDiff = lab1.b - lab2.b;
+                return Math.sqrt(lDiff * lDiff + aDiff * aDiff + bDiff * bDiff);
+            }
+
+            function rgbToLab(r, g, b) {
+                let var_R = r / 255;
+                let var_G = g / 255;
+                let var_B = b / 255;
+
+                if (var_R > 0.04045) var_R = Math.pow(((var_R + 0.055) / 1.055), 2.4);
+                else var_R = var_R / 12.92;
+                if (var_G > 0.04045) var_G = Math.pow(((var_G + 0.055) / 1.055), 2.4);
+                else var_G = var_G / 12.92;
+                if (var_B > 0.04045) var_B = Math.pow(((var_B + 0.055) / 1.055), 2.4);
+                else var_B = var_B / 12.92;
+
+                var_R = var_R * 100;
+                var_G = var_G * 100;
+                var_B = var_B * 100;
+
+                const X = var_R * 0.4124 + var_G * 0.3576 + var_B * 0.1805;
+                const Y = var_R * 0.2126 + var_G * 0.7152 + var_B * 0.0722;
+                const Z = var_R * 0.0193 + var_G * 0.1192 + var_B * 0.9505;
+
+                let var_X = X / 95.047;
+                let var_Y = Y / 100.000;
+                let var_Z = Z / 108.883;
+
+                if (var_X > 0.008856) var_X = Math.pow(var_X, (1 / 3));
+                else var_X = (7.787 * var_X) + (16 / 116);
+                if (var_Y > 0.008856) var_Y = Math.pow(var_Y, (1 / 3));
+                else var_Y = (7.787 * var_Y) + (16 / 116);
+                if (var_Z > 0.008856) var_Z = Math.pow(var_Z, (1 / 3));
+                else var_Z = (7.787 * var_Z) + (16 / 116);
+
+                const CIEL = (116 * var_Y) - 16;
+                const CIEa = 500 * (var_X - var_Y);
+                const CIEb = 200 * (var_Y - var_Z);
+
+                const L_scaled = CIEL * 2.55;
+                const a_scaled = CIEa + 128;
+                const b_scaled = CIEb + 128;
+
+                return { l: L_scaled, a: a_scaled, b: b_scaled };
+            }
+
+            function predictLevelWithKNN(category, receivedLab, k = 3) {
+                const categoryLower = category.toLowerCase();
+                const categoryData = trainingData.filter(item => item.category === categoryLower);
+                if (categoryData.length === 0) {
+                    console.warn('해당 category의 trainingData가 없습니다:', categoryLower);
+                    return null;
+                }
+
+                const distances = categoryData.map(item => ({
+                    ...item,
+                    distance: getColorDistance(receivedLab, { l: item.l, a: item.a, b: item.b })
+                }));
+
+                distances.sort((a, b) => a.distance - b.distance);
+
+                const neighbors = distances.slice(0, k);
+
+                const levelCounts = neighbors.reduce((acc, neighbor) => {
+                    acc[neighbor.expected] = (acc[neighbor.expected] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const predictedLevel = Object.keys(levelCounts).reduce((a, b) =>
+                    levelCounts[a] > levelCounts[b] ? a : b
+                );
+
+                return parseInt(predictedLevel, 10);
+            }
+
+            // 결과 각 항목의 예측된 수치 및 점수 저장 (saveResult용)
+            const resultMap = {};
+
+            function parseAndDisplayData(dataString) {
+                const regex = /(\w+):\{r:(\d+),g:(\d+),b:(\d+)\}/g;
+                let match;
+
+                while ((match = regex.exec(dataString)) !== null) {
+                    const [, name, r, g, b] = match;
+
+                    const elementId = name.toLowerCase();
+                    const colorBox = document.getElementById(elementId);
+
+                    if (colorBox) {
+                        const colorDisplay = colorBox.querySelector('.color-display');
+                        const wellnessScore = colorBox.querySelector('.wellness-score');
+                        const patchIcon = colorBox.querySelector('.patch-icon');
+
+                        colorDisplay.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+
+                        const receivedLab = rgbToLab(parseInt(r), parseInt(g), parseInt(b));
+                        const predictedLevel = predictLevelWithKNN(elementId, receivedLab, 3);
+                        let useEntry = null;
+
+                        if (predictedLevel !== null) {
+                            // 예측된 level에 해당하는 score와 svg를 trainingData에서 찾기
+                            const matchedEntry = trainingData.find(
+                                item => item.category === elementId &&
+                                    item.expected === predictedLevel &&
+                                    item.score !== null &&
+                                    item.svgCode !== null
+                            );
+
+                            useEntry = matchedEntry || trainingData.find(
+                                item => item.category === elementId &&
+                                    item.expected === predictedLevel &&
+                                    item.score !== null
+                            );
+
+                            if (useEntry) {
+                                wellnessScore.textContent = `Wellness Score : ${useEntry.score}`;
+                                patchIcon.innerHTML = useEntry.svgCode || '';
+                            } else {
+                                wellnessScore.textContent = 'Wellness Score : ?';
+                                patchIcon.innerHTML = '';
+                            }
+                        } else {
+                            wellnessScore.textContent = 'Wellness Score : ?';
+                            patchIcon.innerHTML = '';
+                        }
+
+                        // 터치/클릭 시 상세 페이지로 이동
+                        colorBox.onclick = () => showDetail(elementId);
+
+                        // 결과 수치 및 점수 기록 (0값 유지를 위해 삼항연산자 고도화)
+                        if (useEntry) {
+                            const rawVal = useEntry.value;
+                            const rawScore = useEntry.score;
+                            const finalVal = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : (rawVal === 0 || rawVal === '0' ? 0 : '');
+                            const finalScore = (rawScore !== undefined && rawScore !== null && rawScore !== '') ? rawScore : (rawScore === 0 || rawScore === '0' ? 0 : '');
+
+                            resultMap[elementId] = {
+                                value: finalVal,
+                                score: finalScore,
+                                r: parseInt(r),
+                                g: parseInt(g),
+                                b: parseInt(b)
+                            };
+                        } else {
+                            resultMap[elementId] = {
+                                value: '',
+                                score: '',
+                                r: parseInt(r),
+                                g: parseInt(g),
+                                b: parseInt(b)
+                            };
+                        }
+                    }
+                }
+
+                // Total Score 연산 (10항목 전체 score의 평균 소수점 한자리)
+                const categories = ['blood', 'bilirubin', 'urobilinogen', 'ketone', 'protein', 'nitrite', 'glucose', 'ph', 'sg', 'wbc'];
+                let sumScore = 0;
+                let validCount = 0;
+                categories.forEach(cat => {
+                    const entry = resultMap[cat];
+                    if (entry && entry.score !== '') {
+                        const s = parseFloat(entry.score);
+                        if (!isNaN(s)) {
+                            sumScore += s;
+                            validCount++;
+                        }
+                    }
+                });
+                const avgScore = validCount > 0 ? (sumScore / validCount).toFixed(1) : '-';
+                const totalScoreEl = document.getElementById('totalScoreHeader');
+                totalScoreEl.textContent = `Total Score : ${avgScore}`;
+                totalScoreEl.style.display = 'block';
+
+                // ── 원형 엠블럼 점수 업데이트 ──
+                setEmblemScoreText(avgScore);
+
+                // ── 날짜 표시 (년.월.일 + 시:분, KST 기준 기기 로컬 시간) ──
+                const resultDateEl = document.getElementById('resultDateText');
+                let dateText = '-';
+                {
+                    const now = new Date();
+                    const y = now.getFullYear();
+                    const m = String(now.getMonth() + 1).padStart(2, '0');
+                    const d = String(now.getDate()).padStart(2, '0');
+                    const hh = String(now.getHours()).padStart(2, '0');
+                    const mi = String(now.getMinutes()).padStart(2, '0');
+                    dateText = `${y}.${m}.${d}일 ${hh}시${mi}분`;
+                }
+                if (resultDateEl) resultDateEl.textContent = dateText;
+
+                // ── 점수 이력 localStorage 저장(다음 앱 실행 시 임시 표시용으로만 사용) ──
+                const SCORE_HISTORY_KEY = 'cym702_score_history';
+                let scoreHistory = [];
+                try {
+                    const stored = localStorage.getItem(SCORE_HISTORY_KEY);
+                    if (stored) scoreHistory = JSON.parse(stored);
+                    if (!Array.isArray(scoreHistory)) scoreHistory = [];
+                } catch (e) { scoreHistory = []; }
+
+                if (avgScore !== '-') scoreHistory.push(parseFloat(avgScore));
+                // 최대 20개만 유지
+                if (scoreHistory.length > 20) scoreHistory = scoreHistory.slice(-20);
+                try { localStorage.setItem(SCORE_HISTORY_KEY, JSON.stringify(scoreHistory)); } catch (e) { }
+
+                // ── 그리드 항목 태그 스타일 업데이트 ──
+                updateGridTags(resultMap);
+
+                // ── 이번 결과를 홈 화면 복원용으로 저장 (다음 실행 시 최초 화면에 표시) ──
+                saveLastResultSnapshot(avgScore, dateText);
+
+                // ── 방금 완료된 결과를 지난 검사 결과 이력에 즉시 반영하고,
+                //    실제(구글시트) 이력 기준으로 추이 그래프를 그림
+                //    → 제일 오른쪽 점이 항상 방금 나온 Total Score와 일치하고,
+                //      그 왼쪽 4개는 진짜 직전 검사들의 점수가 됨(로컬스토리지 임시값 사용 금지) ──
+                function appendNewRecordAndDrawTrend() {
+                    resultHistoryRecords.push({ dateText, avgScore, userId: '', categories: resultMap });
+                    const newIdx = resultHistoryRecords.length - 1;
+                    currentHistoryIndex = -1; // 화살표는 다시 "최신" 기준으로
+                    setResultNavButtonsState();
+                    drawTrendGraph(getTrendScoresEndingAt(newIdx), avgScore);
+                }
+
+                if (resultHistoryLoaded) {
+                    appendNewRecordAndDrawTrend();
+                } else {
+                    // 아직 지난 검사 이력을 못 불러온 상태라면 우선 불러온 뒤 정확한 그래프로 반영
+                    drawTrendGraph([parseFloat(avgScore)], avgScore); // 로딩 완료 전 임시 표시
+                    ensureResultHistoryLoaded().then(() => {
+                        appendNewRecordAndDrawTrend();
+                    });
+                }
+
+                // 모든 항목 처리 후 구글시트에 저장
+                saveResultToSheet(resultMap, avgScore);
+            }
+
+            // ──────────────────────────────────────
+            // 트렌드 그래프 (SVG 라인 차트)
+            // ──────────────────────────────────────
+            function drawTrendGraph(history, currentScore) {
+                const svg = document.getElementById('trendGraphSvg');
+                if (!svg) return;
+                svg.innerHTML = '';
+
+                const TREND_COLOR = '#41D8E6';
+
+                // 최근 5회 데이터 준비 (부족하면 가장 오래된(첫) 값을 반복해 왼쪽을 채움)
+                let data = history.slice().map(v => parseFloat(v)).filter(v => !isNaN(v));
+                if (data.length === 0) {
+                    const fallback = parseFloat(currentScore);
+                    data = [isNaN(fallback) ? 80 : fallback];
+                }
+                while (data.length < 5) {
+                    data.unshift(data[0]);
+                }
+                data = data.slice(-5);
+
+                const W = 160, H = 70;
+                svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+                svg.setAttribute('preserveAspectRatio', 'none');
+
+                const toX = (i) => (i / (data.length - 1)) * (W - 20) + 10;
+
+                // 배경 가로 점선 눈금선 5줄: 100/90/80/70/60점을 의미 (가운데 80점 고정, 위/아래 간격 1.5배)
+                const gridCount = 5;
+                const baseStep = (H - 20) / (gridCount - 1); // 기존 균등 간격
+                const centerY = 10 + 2 * baseStep; // 가운데(3번째, 80점) 줄 위치 고정
+                const gridStep = baseStep * 1.5; // 위 2개, 아래 2개 간격을 1.5배로 확대
+                const gridOffsets = [-2, -1, 0, 1, 2]; // g=0..4 기준 중심으로부터 step 개수
+                const gridScores = [100, 90, 80, 70, 60]; // 각 점선이 의미하는 점수
+                for (let g = 0; g < gridCount; g++) {
+                    const gy = centerY + gridOffsets[g] * gridStep;
+                    const gridLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    gridLine.setAttribute('x1', 10);
+                    gridLine.setAttribute('x2', W - 10);
+                    gridLine.setAttribute('y1', gy);
+                    gridLine.setAttribute('y2', gy);
+                    gridLine.setAttribute('stroke', '#9BD3E0');
+                    gridLine.setAttribute('stroke-width', '1');
+                    gridLine.setAttribute('stroke-dasharray', '2,2');
+                    svg.appendChild(gridLine);
+                }
+
+                // 점수(60~100 기준 점선 스케일)를 y좌표로 변환: 80점 = 가운데 줄, 10점당 gridStep만큼 이동
+                const toY = (v) => centerY - ((v - 80) / 10) * gridStep;
+
+                const points = data.map((v, i) => `${toX(i)},${toY(v)}`).join(' ');
+
+                // 라인
+                const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                polyline.setAttribute('points', points);
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('stroke', TREND_COLOR);
+                polyline.setAttribute('stroke-width', '2');
+                polyline.setAttribute('stroke-linejoin', 'round');
+                polyline.setAttribute('stroke-linecap', 'round');
+                svg.appendChild(polyline);
+
+                // 점 (가운데가 비어있는 원, 크기 2배)
+                data.forEach((v, i) => {
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', toX(i));
+                    circle.setAttribute('cy', toY(v));
+                    circle.setAttribute('r', 5);
+                    circle.setAttribute('fill', '#ffffff');
+                    circle.setAttribute('stroke', TREND_COLOR);
+                    circle.setAttribute('stroke-width', '2');
+                    svg.appendChild(circle);
+
+                    // 마지막 점 점수 라벨
+                    if (i === data.length - 1) {
+                        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        const labelX = toX(i);
+                        label.setAttribute('x', labelX);
+                        label.setAttribute('y', toY(v) - 10);
+                        label.setAttribute('text-anchor', 'middle');
+                        label.setAttribute('font-size', '15.6');
+                        label.setAttribute('font-weight', '700');
+                        label.setAttribute('fill', TREND_COLOR);
+                        label.setAttribute('font-family', 'Gilroy, sans-serif');
+                        label.setAttribute('transform', `translate(${labelX},0) scale(0.85,1) translate(${-labelX},0)`);
+                        label.textContent = v;
+                        svg.appendChild(label);
+                    }
+                });
+            }
+
+            // ──────────────────────────────────────
+            // 그리드 항목 태그 색상 업데이트
+            // ─ 점수: KNN 매칭된 trainingData의 score (변경 없음)
+            // ─ 사각 태그 색상: BLE 검출된 실제 RGB 색상으로 칠하기
+            // ─ 아이콘: parseAndDisplayData가 이미 .patch-icon에 삽입 완료
+            // ──────────────────────────────────────
+            function updateGridTags(resultMap) {
+                const categories = ['blood', 'bilirubin', 'urobilinogen', 'ketone', 'protein', 'nitrite', 'glucose', 'ph', 'sg', 'wbc'];
+                categories.forEach(cat => {
+                    const el = document.getElementById(cat);
+                    if (!el) return;
+                    const nameEl = el.querySelector('.result-grid-item-name');
+                    if (nameEl) nameEl.classList.remove('dim-text');
+                    const tag = el.querySelector('.home-grid-item-tag');
+                    if (!tag) return;
+
+                    const entry = resultMap[cat];
+                    if (!entry || entry.score === '' || entry.score === null || entry.score === undefined) {
+                        tag.textContent = '-';
+                        tag.style.cssText = '';
+                        tag.className = 'home-grid-item-tag';
+                        return;
+                    }
+
+                    // ── 점수 표시 (KNN 매칭 결과 그대로) ──
+                    const s = parseFloat(entry.score);
+                    tag.textContent = isNaN(s) ? '-' : s;
+
+                    // ── 사각 태그 색상: 검출된 RGB로 채우기 ──
+                    const r = entry.r, g = entry.g, b = entry.b;
+                    if (r !== undefined && g !== undefined && b !== undefined) {
+                        const detectedColor = `rgb(${r}, ${g}, ${b})`;
+                        tag.style.backgroundColor = detectedColor;
+                        tag.style.borderColor = detectedColor;
+                        tag.style.color = '#000000';  // 검은 글씨로 고정
+                    }
+                    tag.className = 'home-grid-item-tag';
+
+                    // ── 클릭 시 상세 화면 연결 ──
+                    el.onclick = () => showDetail(cat);
+                });
+            }
+
+            // ---------------------------
+            // 5) 결과 구글시트 저장 (Google Apps Script Web App)
+            // ---------------------------
+            const RESULT_SHEET_SCRIPT_URL =
+                'https://script.google.com/macros/s/AKfycby_dOXwbzgRi5pvz2znJSuP-w1CoHqnzaC72bB3B6Tya17l5dUUF6IEyUb04WQgCphMqw/exec';
+
+            function saveResultToSheet(resultMap, avgScore) {
+                const now = new Date();
+                // 로컬 타임존 오프셋을 밀리초 단위로 계산하여 더해줌
+                const tzOffset = now.getTimezoneOffset() * 60000;
+                const localISOTime = new Date(now.getTime() - tzOffset).toISOString().slice(0, -1);
+
+                const timestamp = localISOTime; // 결과 예: '2026-06-27T15:46:10.144'
+
+                const getVal = (cat) => (resultMap[cat] && resultMap[cat].value !== undefined) ? resultMap[cat].value : '';
+                const getScore = (cat) => (resultMap[cat] && resultMap[cat].score !== undefined) ? resultMap[cat].score : '';
+                const getR = (cat) => (resultMap[cat] && resultMap[cat].r !== undefined) ? resultMap[cat].r : '';
+                const getG = (cat) => (resultMap[cat] && resultMap[cat].g !== undefined) ? resultMap[cat].g : '';
+                const getB = (cat) => (resultMap[cat] && resultMap[cat].b !== undefined) ? resultMap[cat].b : '';
+
+                // value, score, R, G, B 모두 저장하도록 페이로드 구성
+                const payload = {
+                    timestamp,
+                    User_ID: '',
+                    total_score: avgScore !== '-' ? Number(avgScore) : '',
+
+                    Blood_value: getVal('blood'),
+                    Blood_score: getScore('blood'),
+                    Blood_R: getR('blood'),
+                    Blood_G: getG('blood'),
+                    Blood_B: getB('blood'),
+
+                    Bilirubin_value: getVal('bilirubin'),
+                    Bilirubin_score: getScore('bilirubin'),
+                    Bilirubin_R: getR('bilirubin'),
+                    Bilirubin_G: getG('bilirubin'),
+                    Bilirubin_B: getB('bilirubin'),
+
+                    Uroblilinogen_value: getVal('urobilinogen'),
+                    Uroblilinogen_score: getScore('urobilinogen'),
+                    Uroblilinogen_R: getR('urobilinogen'),
+                    Uroblilinogen_G: getG('urobilinogen'),
+                    Uroblilinogen_B: getB('urobilinogen'),
+                    // Urobilinogen 스펠링 헤더 대응용 추가
+                    Urobilinogen_value: getVal('urobilinogen'),
+                    Urobilinogen_score: getScore('urobilinogen'),
+                    Urobilinogen_R: getR('urobilinogen'),
+                    Urobilinogen_G: getG('urobilinogen'),
+                    Urobilinogen_B: getB('urobilinogen'),
+
+                    Ketone_value: getVal('ketone'),
+                    Ketone_score: getScore('ketone'),
+                    Ketone_R: getR('ketone'),
+                    Ketone_G: getG('ketone'),
+                    Ketone_B: getB('ketone'),
+
+                    Protein_value: getVal('protein'),
+                    Protein_score: getScore('protein'),
+                    Protein_R: getR('protein'),
+                    Protein_G: getG('protein'),
+                    Protein_B: getB('protein'),
+
+                    Nitrite_value: getVal('nitrite'),
+                    Nitrite_score: getScore('nitrite'),
+                    Nitrite_R: getR('nitrite'),
+                    Nitrite_G: getG('nitrite'),
+                    Nitrite_B: getB('nitrite'),
+
+                    Glucose_value: getVal('glucose'),
+                    Glucose_score: getScore('glucose'),
+                    Glucose_R: getR('glucose'),
+                    Glucose_G: getG('glucose'),
+                    Glucose_B: getB('glucose'),
+
+                    pH_value: getVal('ph'),
+                    pH_score: getScore('ph'),
+                    pH_R: getR('ph'),
+                    pH_G: getG('ph'),
+                    pH_B: getB('ph'),
+
+                    'S.G._value': getVal('sg'),
+                    'S.G._score': getScore('sg'),
+                    'S.G._R': getR('sg'),
+                    'S.G._G': getG('sg'),
+                    'S.G._B': getB('sg'),
+
+                    WBC_value: getVal('wbc'),
+                    WBC_score: getScore('wbc'),
+                    WBC_R: getR('wbc'),
+                    WBC_G: getG('wbc'),
+                    WBC_B: getB('wbc'),
+
+                    Test_Timing: '',
+                    Condition_Tag: ''
+                };
+
+                console.log('구글시트 저장 페이로드 전송 시도:', payload);
+
+                fetch(RESULT_SHEET_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload)
+                })
+                    .then(() => {
+                        console.log('구글시트 저장 요청이 성공적으로 발송되었습니다. (no-cors 모드로 실제 결과는 스프레드시트 갱신으로 확인)');
+                    })
+                    .catch(err => {
+                        console.error('구글시트 저장 요청 중 에러 발생:', err);
+                    });
+            }
+        });
+    </script>
+</body>
+
+</html>
